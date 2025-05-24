@@ -1,13 +1,15 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Signup = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     firstName: "",
@@ -33,18 +35,35 @@ const Signup = () => {
 
     setIsLoading(true);
 
-    // Simulate account creation - will be connected to Supabase
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+          }
+        }
+      });
 
-    toast({
-      title: "Account created successfully!",
-      description: "Welcome to AL - HALLEM. You can now start shopping.",
-    });
+      if (error) throw error;
 
-    // Redirect to shop page after successful signup
-    window.location.href = '/shop';
+      toast({
+        title: "Account created successfully!",
+        description: "Welcome to AL - HALLEM. You can now start shopping.",
+      });
 
-    setIsLoading(false);
+      navigate('/shop');
+    } catch (error: any) {
+      toast({
+        title: "Signup failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,14 +1,16 @@
 
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     email: "",
@@ -17,30 +19,39 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const redirectUrl = searchParams.get('redirect') || '/';
-  const isAdmin = formData.email === 'digitaleyemedia25@gmail.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate authentication - will be connected to Supabase
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    if (isAdmin) {
-      toast({
-        title: "Admin login successful!",
-        description: "Welcome back, Administrator.",
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
-      window.location.href = '/admin';
-    } else {
+
+      if (error) throw error;
+
       toast({
         title: "Login successful!",
         description: "Welcome back to AL - HALLEM.",
       });
-      window.location.href = redirectUrl;
-    }
 
-    setIsLoading(false);
+      // Check if admin and redirect accordingly
+      if (formData.email === 'digitaleyemedia25@gmail.com') {
+        navigate('/admin');
+      } else {
+        navigate(redirectUrl);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,9 +83,6 @@ const Login = () => {
                 required
                 placeholder="your.email@example.com"
               />
-              {isAdmin && (
-                <p className="text-xs text-rose-600 mt-1">Admin account detected</p>
-              )}
             </div>
 
             <div>
@@ -126,15 +134,6 @@ const Login = () => {
                 Guest
               </Link>
             </p>
-          </div>
-
-          {/* Demo Account Info */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium mb-2">Demo Accounts</h4>
-            <div className="text-xs text-gray-600 space-y-1">
-              <p><strong>Admin:</strong> digitaleyemedia25@gmail.com</p>
-              <p><strong>Customer:</strong> any email with password</p>
-            </div>
           </div>
         </CardContent>
       </Card>

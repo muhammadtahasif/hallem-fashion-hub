@@ -1,87 +1,160 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Order {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
+  order_items: Array<{
+    product_name: string;
+    quantity: number;
+    product_price: number;
+  }>;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  categories?: {
+    name: string;
+  };
+}
 
 const AdminDashboard = () => {
   const { toast } = useToast();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [adminEmail, setAdminEmail] = useState("");
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    totalProducts: 0,
+    totalRevenue: 0,
+    todaysOrders: 0
+  });
 
-  // Mock authentication check - will be replaced with real auth
-  const checkAuth = () => {
-    if (adminEmail === "digitaleyemedia25@gmail.com") {
-      setIsAuthenticated(true);
-      toast({
-        title: "Welcome, Administrator!",
-        description: "You now have access to the admin dashboard.",
+  useEffect(() => {
+    if (!loading) {
+      if (!user || user.email !== 'digitaleyemedia25@gmail.com') {
+        navigate('/login');
+        return;
+      }
+      fetchDashboardData();
+    }
+  }, [user, loading]);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch orders
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          customer_name,
+          customer_email,
+          total_amount,
+          status,
+          created_at,
+          order_items (
+            product_name,
+            quantity,
+            product_price
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      // Fetch products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select(`
+          id,
+          name,
+          price,
+          stock,
+          categories (
+            name
+          )
+        `);
+
+      if (productsError) throw productsError;
+
+      setOrders(ordersData || []);
+      setProducts(productsData || []);
+
+      // Calculate stats
+      const today = new Date().toDateString();
+      const todaysOrders = ordersData?.filter(order => 
+        new Date(order.created_at).toDateString() === today
+      ).length || 0;
+
+      const pendingOrders = ordersData?.filter(order => 
+        order.status === 'pending'
+      ).length || 0;
+
+      const totalRevenue = ordersData?.reduce((sum, order) => 
+        sum + order.total_amount, 0
+      ) || 0;
+
+      setStats({
+        totalOrders: ordersData?.length || 0,
+        pendingOrders,
+        totalProducts: productsData?.length || 0,
+        totalRevenue,
+        todaysOrders
       });
-    } else {
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
       toast({
-        title: "Access Denied",
-        description: "Only administrators can access this page.",
+        title: "Error",
+        description: "Failed to load dashboard data.",
         variant: "destructive"
       });
     }
   };
 
-  // Mock data - will be replaced with real data from Supabase
-  const stats = {
-    totalOrders: 156,
-    pendingOrders: 12,
-    totalProducts: 45,
-    totalRevenue: 487500,
-    todaysOrders: 8
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Order updated",
+        description: "Order status has been updated successfully.",
+      });
+
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error updating order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status.",
+        variant: "destructive"
+      });
+    }
   };
-
-  const recentOrders = [
-    { id: "ALH-2024-001", customer: "Fatima Khan", product: "Royal Blue Dupatta", amount: 2500, status: "shipped" },
-    { id: "ALH-2024-002", customer: "Ayesha Ali", product: "Pink Lawn Suit", amount: 4500, status: "processing" },
-    { id: "ALH-2024-003", customer: "Zara Ahmed", product: "Silk Fabric", amount: 1800, status: "pending" },
-    { id: "ALH-2024-004", customer: "Maria Hassan", product: "Chiffon Party Wear", amount: 6500, status: "delivered" }
-  ];
-
-  const products = [
-    { id: 1, name: "Royal Blue Embroidered Dupatta", price: 2500, stock: 15, category: "dupattas" },
-    { id: 2, name: "Elegant Pink Lawn Suit", price: 4500, stock: 8, category: "ready-made" },
-    { id: 3, name: "Premium Silk Fabric", price: 1800, stock: 25, category: "unstitched" },
-    { id: 4, name: "Chiffon Party Wear", price: 6500, stock: 3, category: "ready-made" }
-  ];
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen fashion-gradient flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center font-serif">Admin Access</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Admin Email
-              </label>
-              <input
-                type="email"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                placeholder="digitaleyemedia25@gmail.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-            <Button onClick={checkAuth} className="w-full bg-rose-500 hover:bg-rose-600">
-              Access Dashboard
-            </Button>
-            <p className="text-xs text-gray-500 text-center">
-              Demo: Use digitaleyemedia25@gmail.com to access
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -93,6 +166,10 @@ const AdminDashboard = () => {
     }
   };
 
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -103,13 +180,10 @@ const AdminDashboard = () => {
             <p className="text-gray-600">Welcome back, Administrator</p>
           </div>
           <Button
-            onClick={() => {
-              setIsAuthenticated(false);
-              setAdminEmail("");
-            }}
+            onClick={() => navigate('/')}
             variant="outline"
           >
-            Logout
+            Back to Store
           </Button>
         </div>
 
@@ -151,10 +225,9 @@ const AdminDashboard = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -162,38 +235,79 @@ const AdminDashboard = () => {
           <TabsContent value="orders">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Recent Orders</CardTitle>
-                  <Button size="sm">View All Orders</Button>
-                </div>
+                <CardTitle>Order Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentOrders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4">
-                          <div>
-                            <p className="font-medium">{order.id}</p>
-                            <p className="text-sm text-gray-600">{order.customer}</p>
+                {orders.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No orders found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {orders.map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-4">
+                            <div>
+                              <p className="font-medium">{order.order_number}</p>
+                              <p className="text-sm text-gray-600">{order.customer_name}</p>
+                              <p className="text-sm text-gray-600">{order.customer_email}</p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">
+                                PKR {order.total_amount.toLocaleString()}
+                              </p>
+                              <div className="text-xs text-gray-600 mt-1">
+                                {order.order_items.map((item, index) => (
+                                  <div key={index}>
+                                    {item.product_name} x {item.quantity}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm">{order.product}</p>
-                            <p className="text-sm font-medium">PKR {order.amount.toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge className={`${getStatusColor(order.status)} text-white capitalize`}>
+                            {order.status}
+                          </Badge>
+                          <div className="flex gap-2">
+                            {order.status === 'pending' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => updateOrderStatus(order.id, 'processing')}
+                                className="bg-blue-500 hover:bg-blue-600"
+                              >
+                                Process
+                              </Button>
+                            )}
+                            {order.status === 'processing' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => updateOrderStatus(order.id, 'shipped')}
+                                className="bg-purple-500 hover:bg-purple-600"
+                              >
+                                Ship
+                              </Button>
+                            )}
+                            {order.status === 'shipped' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => updateOrderStatus(order.id, 'delivered')}
+                                className="bg-green-500 hover:bg-green-600"
+                              >
+                                Deliver
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge className={`${getStatusColor(order.status)} text-white capitalize`}>
-                          {order.status}
-                        </Badge>
-                        <Button size="sm" variant="outline">
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -218,7 +332,7 @@ const AdminDashboard = () => {
                           <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
                           <div>
                             <p className="font-medium">{product.name}</p>
-                            <p className="text-sm text-gray-600 capitalize">{product.category.replace('-', ' ')}</p>
+                            <p className="text-sm text-gray-600">{product.categories?.name}</p>
                             <p className="text-sm font-medium">PKR {product.price.toLocaleString()}</p>
                           </div>
                         </div>
@@ -235,35 +349,6 @@ const AdminDashboard = () => {
                           <Button size="sm" variant="outline">Delete</Button>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Categories Tab */}
-          <TabsContent value="categories">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Category Management</CardTitle>
-                  <Button size="sm" className="bg-rose-500 hover:bg-rose-600">
-                    Add Category
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {['Dupattas', 'Ready-Made', 'Unstitched'].map((category) => (
-                    <div key={category} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium">{category}</h3>
-                        <Button size="sm" variant="outline">Edit</Button>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {category === 'Dupattas' ? '15' : category === 'Ready-Made' ? '18' : '12'} products
-                      </p>
                     </div>
                   ))}
                 </div>

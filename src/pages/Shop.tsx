@@ -9,111 +9,147 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Filter } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/hooks/useCart";
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  original_price?: number;
+  image_url: string;
+  stock: number;
+  category_id: string;
+  categories?: {
+    name: string;
+    slug: string;
+  };
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const Shop = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
   const [sortBy, setSortBy] = useState('latest');
   const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { addToCart } = useCart();
 
-  // Mock products data - will be replaced with real data from Supabase
-  const mockProducts = [
-    {
-      id: 1,
-      name: "Royal Blue Embroidered Dupatta",
-      price: 2500,
-      originalPrice: 3000,
-      image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400&h=500&fit=crop",
-      category: "dupattas",
-      inStock: true,
-      discount: 17
-    },
-    {
-      id: 2,
-      name: "Elegant Pink Lawn Suit",
-      price: 4500,
-      originalPrice: 5500,
-      image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=500&fit=crop",
-      category: "ready-made",
-      inStock: true,
-      discount: 18
-    },
-    {
-      id: 3,
-      name: "Premium Silk Fabric",
-      price: 1800,
-      originalPrice: 2200,
-      image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&h=500&fit=crop",
-      category: "unstitched",
-      inStock: true,
-      discount: 18
-    },
-    {
-      id: 4,
-      name: "Chiffon Party Wear",
-      price: 6500,
-      originalPrice: 8000,
-      image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400&h=500&fit=crop",
-      category: "ready-made",
-      inStock: true,
-      discount: 19
-    },
-    {
-      id: 5,
-      name: "Golden Thread Dupatta",
-      price: 3200,
-      originalPrice: 3800,
-      image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400&h=500&fit=crop",
-      category: "dupattas",
-      inStock: true,
-      discount: 16
-    },
-    {
-      id: 6,
-      name: "Cotton Lawn Unstitched",
-      price: 2800,
-      originalPrice: 3500,
-      image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&h=500&fit=crop",
-      category: "unstitched",
-      inStock: false,
-      discount: 20
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    // Update URL when filters change
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('search', searchQuery);
+    if (selectedCategory) params.set('category', selectedCategory);
+    setSearchParams(params);
+    
+    fetchProducts();
+  }, [searchQuery, selectedCategory, sortBy]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
-  ];
+  };
 
-  const categories = [
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('products')
+        .select(`
+          id,
+          name,
+          slug,
+          price,
+          original_price,
+          image_url,
+          stock,
+          category_id,
+          categories (
+            name,
+            slug
+          )
+        `);
+
+      // Apply filters
+      if (selectedCategory) {
+        const category = categories.find(c => c.slug === selectedCategory);
+        if (category) {
+          query = query.eq('category_id', category.id);
+        }
+      }
+
+      if (searchQuery) {
+        query = query.ilike('name', `%${searchQuery}%`);
+      }
+
+      // Apply sorting
+      switch (sortBy) {
+        case 'price-low':
+          query = query.order('price', { ascending: true });
+          break;
+        case 'price-high':
+          query = query.order('price', { ascending: false });
+          break;
+        default:
+          query = query.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Apply price range filter
+      const filteredData = data?.filter(product => 
+        product.price >= priceRange[0] && product.price <= priceRange[1]
+      ) || [];
+
+      setProducts(filteredData);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const categoryOptions = [
     { value: '', label: 'All Categories' },
-    { value: 'dupattas', label: 'Dupattas' },
-    { value: 'ready-made', label: 'Ready-Made' },
-    { value: 'unstitched', label: 'Unstitched' },
+    ...categories.map(cat => ({ value: cat.slug, label: cat.name }))
   ];
 
-  const filteredProducts = mockProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || product.category === selectedCategory;
-    const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-    return matchesSearch && matchesCategory && matchesPrice;
-  });
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case 'price-low':
-        return a.price - b.price;
-      case 'price-high':
-        return b.price - a.price;
-      case 'discount':
-        return b.discount - a.discount;
-      default:
-        return b.id - a.id; // Latest first
-    }
-  });
+  const calculateDiscount = (price: number, originalPrice?: number) => {
+    if (!originalPrice || originalPrice <= price) return 0;
+    return Math.round(((originalPrice - price) / originalPrice) * 100);
+  };
 
   const FilterContent = () => (
     <div className="space-y-6">
       <div>
         <h3 className="font-semibold mb-3">Categories</h3>
         <div className="space-y-2">
-          {categories.map((category) => (
+          {categoryOptions.map((category) => (
             <div key={category.value} className="flex items-center space-x-2">
               <Checkbox
                 id={category.value}
@@ -150,19 +186,16 @@ const Shop = () => {
               className="w-20"
             />
           </div>
+          <Button 
+            size="sm" 
+            onClick={fetchProducts}
+            className="bg-rose-500 hover:bg-rose-600"
+          >
+            Apply
+          </Button>
           <p className="text-xs text-gray-500">
             PKR {priceRange[0].toLocaleString()} - PKR {priceRange[1].toLocaleString()}
           </p>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="font-semibold mb-3">Availability</h3>
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Checkbox id="in-stock" />
-            <label htmlFor="in-stock" className="text-sm">In Stock Only</label>
-          </div>
         </div>
       </div>
     </div>
@@ -174,7 +207,10 @@ const Shop = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold font-serif mb-4">
-            {selectedCategory ? categories.find(c => c.value === selectedCategory)?.label : 'All Products'}
+            {selectedCategory ? 
+              categories.find(c => c.slug === selectedCategory)?.name || 'Products' : 
+              'All Products'
+            }
           </h1>
           <p className="text-gray-600">
             Discover our collection of premium women's fashion
@@ -196,11 +232,10 @@ const Shop = () => {
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border shadow-lg z-50">
               <SelectItem value="latest">Latest</SelectItem>
               <SelectItem value="price-low">Price: Low to High</SelectItem>
               <SelectItem value="price-high">Price: High to Low</SelectItem>
-              <SelectItem value="discount">Highest Discount</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -239,11 +274,15 @@ const Shop = () => {
           <div className="flex-1">
             <div className="flex items-center justify-between mb-6">
               <p className="text-gray-600">
-                Showing {sortedProducts.length} of {mockProducts.length} products
+                Showing {products.length} products
               </p>
             </div>
 
-            {sortedProducts.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">Loading products...</p>
+              </div>
+            ) : products.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 text-lg">No products found matching your criteria.</p>
                 <Button 
@@ -260,49 +299,64 @@ const Shop = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedProducts.map((product) => (
-                  <Link key={product.id} to={`/product/${product.id}`} className="group">
-                    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
-                      <div className="relative">
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        {product.discount > 0 && (
-                          <Badge className="absolute top-2 left-2 bg-rose-500">
-                            -{product.discount}%
-                          </Badge>
-                        )}
-                        {!product.inStock && (
-                          <Badge variant="secondary" className="absolute top-2 right-2">
-                            Out of Stock
-                          </Badge>
-                        )}
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold mb-2 group-hover:text-rose-500 transition-colors">
-                          {product.name}
-                        </h3>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-lg font-bold text-rose-500">
-                              PKR {product.price.toLocaleString()}
-                            </span>
-                            {product.originalPrice > product.price && (
-                              <span className="text-sm text-gray-500 line-through">
-                                PKR {product.originalPrice.toLocaleString()}
-                              </span>
+                {products.map((product) => {
+                  const discount = calculateDiscount(product.price, product.original_price);
+                  return (
+                    <div key={product.id} className="group">
+                      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                        <Link to={`/product/${product.id}`}>
+                          <div className="relative">
+                            <img 
+                              src={product.image_url} 
+                              alt={product.name}
+                              className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            {discount > 0 && (
+                              <Badge className="absolute top-2 left-2 bg-rose-500">
+                                -{discount}%
+                              </Badge>
+                            )}
+                            {product.stock === 0 && (
+                              <Badge variant="secondary" className="absolute top-2 right-2">
+                                Out of Stock
+                              </Badge>
                             )}
                           </div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 capitalize">
-                          {product.category.replace('-', ' ')}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
+                        </Link>
+                        <CardContent className="p-4">
+                          <Link to={`/product/${product.id}`}>
+                            <h3 className="font-semibold mb-2 group-hover:text-rose-500 transition-colors">
+                              {product.name}
+                            </h3>
+                          </Link>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-lg font-bold text-rose-500">
+                                PKR {product.price.toLocaleString()}
+                              </span>
+                              {product.original_price && product.original_price > product.price && (
+                                <span className="text-sm text-gray-500 line-through">
+                                  PKR {product.original_price.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-3 capitalize">
+                            {product.categories?.name}
+                          </p>
+                          <Button 
+                            onClick={() => addToCart(product.id)}
+                            disabled={product.stock === 0}
+                            className="w-full bg-rose-500 hover:bg-rose-600"
+                            size="sm"
+                          >
+                            {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -1,63 +1,93 @@
+
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ShoppingCart } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/hooks/useCart";
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  original_price?: number;
+  image_url: string;
+  categories?: {
+    name: string;
+    slug: string;
+  };
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+}
+
 const Index = () => {
-  const featuredCategories = [{
-    id: 1,
-    name: "Elegant Dupattas",
-    description: "Premium quality dupattas in various designs",
-    image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=500&h=600&fit=crop",
-    href: "/shop?category=dupattas"
-  }, {
-    id: 2,
-    name: "Ready-Made Collection",
-    description: "Stylish ready-to-wear outfits",
-    image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&h=600&fit=crop",
-    href: "/shop?category=ready-made"
-  }, {
-    id: 3,
-    name: "Unstitched Fabrics",
-    description: "Premium fabrics for custom tailoring",
-    image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=500&h=600&fit=crop",
-    href: "/shop?category=unstitched"
-  }];
-  const featuredProducts = [{
-    id: 1,
-    name: "Royal Blue Embroidered Dupatta",
-    price: 2500,
-    originalPrice: 3000,
-    image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400&h=500&fit=crop",
-    discount: 17
-  }, {
-    id: 2,
-    name: "Elegant Pink Lawn Suit",
-    price: 4500,
-    originalPrice: 5500,
-    image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=500&fit=crop",
-    discount: 18
-  }, {
-    id: 3,
-    name: "Premium Silk Fabric",
-    price: 1800,
-    originalPrice: 2200,
-    image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&h=500&fit=crop",
-    discount: 18
-  }, {
-    id: 4,
-    name: "Chiffon Party Wear",
-    price: 6500,
-    originalPrice: 8000,
-    image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400&h=500&fit=crop",
-    discount: 19
-  }];
-  return <div className="fashion-gradient">
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const { addToCart } = useCart();
+
+  useEffect(() => {
+    fetchFeaturedProducts();
+    fetchCategories();
+  }, []);
+
+  const fetchFeaturedProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          id,
+          name,
+          price,
+          original_price,
+          image_url,
+          categories (
+            name,
+            slug
+          )
+        `)
+        .eq('featured', true)
+        .limit(4);
+
+      if (error) throw error;
+      setFeaturedProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching featured products:', error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const calculateDiscount = (price: number, originalPrice?: number) => {
+    if (!originalPrice || originalPrice <= price) return 0;
+    return Math.round(((originalPrice - price) / originalPrice) * 100);
+  };
+
+  return (
+    <div className="fashion-gradient">
       {/* Hero Section */}
       <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{
-        backgroundImage: "url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop')"
-      }}>
+          backgroundImage: "url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop')"
+        }}>
           <div className="absolute inset-0 bg-black/40"></div>
         </div>
         <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
@@ -97,10 +127,19 @@ const Index = () => {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {featuredCategories.map(category => <Link key={category.id} to={category.href} className="group">
+            {categories.map(category => (
+              <Link key={category.id} to={`/shop?category=${category.slug}`} className="group">
                 <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group-hover:scale-105">
                   <div className="relative">
-                    <img src={category.image} alt={category.name} className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300" />
+                    <img 
+                      src={`https://images.unsplash.com/photo-${
+                        category.slug === 'dupattas' ? '1583391733956-6c78276477e2' :
+                        category.slug === 'ready-made' ? '1434389677669-e08b4cac3105' :
+                        '1558769132-cb1aea458c5e'
+                      }?w=500&h=600&fit=crop`}
+                      alt={category.name} 
+                      className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300" 
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     <div className="absolute bottom-4 left-4 text-white">
                       <h3 className="text-xl font-semibold font-serif">{category.name}</h3>
@@ -108,7 +147,8 @@ const Index = () => {
                     </div>
                   </div>
                 </Card>
-              </Link>)}
+              </Link>
+            ))}
           </div>
         </div>
       </section>
@@ -123,31 +163,55 @@ const Index = () => {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map(product => <Link key={product.id} to={`/product/${product.id}`} className="group">
-                <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
-                  <div className="relative">
-                    <img src={product.image} alt={product.name} className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300" />
-                    {product.discount > 0 && <Badge className="absolute top-2 left-2 bg-rose-500">
-                        -{product.discount}%
-                      </Badge>}
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-2 group-hover:text-rose-500 transition-colors">
-                      {product.name}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-bold text-rose-500">
-                          PKR {product.price.toLocaleString()}
-                        </span>
-                        {product.originalPrice > product.price && <span className="text-sm text-gray-500 line-through">
-                            PKR {product.originalPrice.toLocaleString()}
-                          </span>}
+            {featuredProducts.map(product => {
+              const discount = calculateDiscount(product.price, product.original_price);
+              return (
+                <div key={product.id} className="group">
+                  <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <Link to={`/product/${product.id}`}>
+                      <div className="relative">
+                        <img 
+                          src={product.image_url} 
+                          alt={product.name}
+                          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300" 
+                        />
+                        {discount > 0 && (
+                          <Badge className="absolute top-2 left-2 bg-rose-500">
+                            -{discount}%
+                          </Badge>
+                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>)}
+                    </Link>
+                    <CardContent className="p-4">
+                      <Link to={`/product/${product.id}`}>
+                        <h3 className="font-semibold mb-2 group-hover:text-rose-500 transition-colors">
+                          {product.name}
+                        </h3>
+                      </Link>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg font-bold text-rose-500">
+                            PKR {product.price.toLocaleString()}
+                          </span>
+                          {product.original_price && product.original_price > product.price && (
+                            <span className="text-sm text-gray-500 line-through">
+                              PKR {product.original_price.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => addToCart(product.id)}
+                        className="w-full bg-rose-500 hover:bg-rose-600"
+                        size="sm"
+                      >
+                        Add to Cart
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
           </div>
           <div className="text-center mt-8">
             <Link to="/shop">
@@ -168,13 +232,19 @@ const Index = () => {
             Be the first to know about new arrivals, exclusive offers, and fashion tips
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-            <input type="email" placeholder="Enter your email" className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-white" />
+            <input 
+              type="email" 
+              placeholder="Enter your email" 
+              className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-white" 
+            />
             <Button className="bg-white text-rose-500 hover:bg-gray-100 px-8 py-3">
               Subscribe
             </Button>
           </div>
         </div>
       </section>
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
