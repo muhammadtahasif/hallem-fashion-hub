@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import ProductEditModal from "@/components/ProductEditModal";
 
 interface Order {
   id: string;
@@ -27,8 +27,12 @@ interface Order {
 interface Product {
   id: string;
   name: string;
+  description: string;
   price: number;
+  original_price?: number;
   stock: number;
+  image_url: string;
+  featured: boolean;
   categories?: {
     name: string;
   };
@@ -40,6 +44,8 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
@@ -87,8 +93,12 @@ const AdminDashboard = () => {
         .select(`
           id,
           name,
+          description,
           price,
+          original_price,
           stock,
+          image_url,
+          featured,
           categories (
             name
           )
@@ -154,6 +164,21 @@ const AdminDashboard = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setSelectedProduct(null);
+    setIsEditModalOpen(false);
+  };
+
+  const handleProductUpdate = () => {
+    fetchDashboardData();
+    handleCloseEditModal();
   };
 
   const getStatusColor = (status: string) => {
@@ -329,7 +354,15 @@ const AdminDashboard = () => {
                     <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
+                          <div className="w-16 h-16 bg-gray-200 rounded-lg">
+                            {product.image_url && (
+                              <img 
+                                src={product.image_url} 
+                                alt={product.name}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            )}
+                          </div>
                           <div>
                             <p className="font-medium">{product.name}</p>
                             <p className="text-sm text-gray-600">{product.categories?.name}</p>
@@ -345,7 +378,13 @@ const AdminDashboard = () => {
                           </Badge>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">Edit</Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditProduct(product)}
+                          >
+                            Edit
+                          </Button>
                           <Button size="sm" variant="outline">Delete</Button>
                         </div>
                       </div>
@@ -415,6 +454,14 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Product Edit Modal */}
+        <ProductEditModal
+          product={selectedProduct}
+          isOpen={isEditModalOpen}
+          onClose={handleCloseEditModal}
+          onUpdate={handleProductUpdate}
+        />
       </div>
     </div>
   );
