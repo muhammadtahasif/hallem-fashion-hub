@@ -4,20 +4,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
 
 const Cart = () => {
   const { items, loading, removeFromCart, updateQuantity, getTotalPrice } = useCart();
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
-    if (!user) {
-      navigate('/login?redirect=/checkout');
-    } else {
-      navigate('/checkout');
-    }
+    navigate('/checkout');
+  };
+
+  const handleBuyNow = () => {
+    navigate('/checkout');
   };
 
   if (loading) {
@@ -135,13 +133,21 @@ const Cart = () => {
                 </div>
                 <Button
                   onClick={handleCheckout}
-                  className="w-full bg-rose-500 hover:bg-rose-600"
+                  className="w-full bg-rose-500 hover:bg-rose-600 mb-2"
                   size="lg"
                 >
                   Proceed to Checkout
                 </Button>
+                <Button
+                  onClick={handleBuyNow}
+                  variant="outline"
+                  className="w-full mb-2"
+                  size="lg"
+                >
+                  Buy Now
+                </Button>
                 <Link to="/shop">
-                  <Button variant="outline" className="w-full mt-2">
+                  <Button variant="outline" className="w-full">
                     Continue Shopping
                   </Button>
                 </Link>

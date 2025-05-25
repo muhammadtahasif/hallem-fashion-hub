@@ -16,8 +16,10 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Account from "./pages/Account";
 import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
 import OrderTracking from "./pages/OrderTracking";
 import AdminDashboard from "./pages/AdminDashboard";
+import EmailVerification from "./pages/EmailVerification";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,8 +44,10 @@ const App = () => (
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/account" element={<Account />} />
                   <Route path="/cart" element={<Cart />} />
+                  <Route path="/checkout" element={<Checkout />} />
                   <Route path="/track-order" element={<OrderTracking />} />
                   <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/verify-email" element={<EmailVerification />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
