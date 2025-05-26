@@ -56,9 +56,7 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
   };
 
   const handleProductClick = (product: Product) => {
-    navigate(`/product/${product.slug}`);
-    // Force page refresh to load new product
-    window.location.reload();
+    navigate(`/product/${product.id}`);
   };
 
   if (loading) {

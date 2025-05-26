@@ -1,92 +1,106 @@
 
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ShoppingCart, ArrowLeft, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
+import { supabase } from "@/integrations/supabase/client";
+import RelatedProducts from "@/components/RelatedProducts";
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  original_price?: number;
+  description?: string;
+  image_url: string;
+  images?: string[];
+  category_id?: string;
+  stock: number;
+  featured: boolean;
+  slug: string;
+  categories?: {
+    name: string;
+    slug: string;
+  };
+}
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { addToCart } = useCart();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  // Mock product data - will be replaced with real data from Supabase
-  const product = {
-    id: 1,
-    name: "Royal Blue Embroidered Dupatta",
-    price: 2500,
-    originalPrice: 3000,
-    description: "Experience elegance with this exquisite royal blue dupatta featuring intricate gold embroidery. Crafted from premium chiffon fabric, this piece adds a touch of sophistication to any outfit. Perfect for weddings, parties, and special occasions.",
-    images: [
-      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=600&h=800&fit=crop",
-      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=600&h=800&fit=crop&brightness=110",
-      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=600&h=800&fit=crop&brightness=90"
-    ],
-    category: "dupattas",
-    inStock: true,
-    stock: 15,
-    discount: 17,
-    features: [
-      "Premium chiffon fabric",
-      "Hand-embroidered gold work",
-      "Machine washable",
-      "2.5 meters length",
-      "Traditional Pakistani design"
-    ],
-    care: [
-      "Dry clean recommended",
-      "Iron on low heat",
-      "Store in a cool, dry place",
-      "Avoid direct sunlight"
-    ]
+  useEffect(() => {
+    if (id) {
+      fetchProduct();
+    }
+  }, [id]);
+
+  const fetchProduct = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories (
+            name,
+            slug
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching product:', error);
+        toast({
+          title: "Error",
+          description: "Product not found.",
+          variant: "destructive",
+        });
+        navigate('/shop');
+        return;
+      }
+
+      setProduct(data);
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load product.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const relatedProducts = [
-    {
-      id: 2,
-      name: "Golden Thread Dupatta",
-      price: 3200,
-      originalPrice: 3800,
-      image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400&h=500&fit=crop&hue=30",
-      discount: 16
-    },
-    {
-      id: 3,
-      name: "Silver Embroidered Dupatta",
-      price: 2800,
-      originalPrice: 3300,
-      image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400&h=500&fit=crop&hue=60",
-      discount: 15
-    },
-    {
-      id: 4,
-      name: "Rose Pink Dupatta",
-      price: 2200,
-      originalPrice: 2600,
-      image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400&h=500&fit=crop&hue=300",
-      discount: 15
-    }
-  ];
-
   const handleBuyNow = () => {
-    // This will redirect to login if user is not authenticated
-    toast({
-      title: "Redirecting to checkout",
-      description: "Please login to continue with your purchase.",
-    });
-    // Redirect to login with return URL
-    window.location.href = `/login?redirect=/product/${id}&action=buy&quantity=${quantity}`;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    // Add to cart first
+    addToCart(product!.id, quantity);
+    
+    // Then navigate to checkout
+    navigate('/checkout');
   };
 
   const handleAddToCart = () => {
-    toast({
-      title: "Added to cart",
-      description: `${quantity} item(s) added to your cart.`,
-    });
+    addToCart(product!.id, quantity);
   };
 
   const handleWishlist = () => {
@@ -96,90 +110,140 @@ const ProductDetail = () => {
     });
   };
 
+  const calculateDiscount = (price: number, originalPrice?: number) => {
+    if (!originalPrice || originalPrice <= price) return 0;
+    return Math.round(((originalPrice - price) / originalPrice) * 100);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-rose-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Product not found</h2>
+          <Button onClick={() => navigate('/shop')} className="bg-rose-500 hover:bg-rose-600">
+            Back to Shop
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const discount = calculateDiscount(product.price, product.original_price);
+  const productImages = product.images && product.images.length > 0 ? product.images : [product.image_url];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">
-          <Link to="/" className="hover:text-rose-500">Home</Link>
+          <Button variant="ghost" onClick={() => navigate('/')} className="p-0 h-auto font-normal text-gray-600 hover:text-rose-500">
+            Home
+          </Button>
           <span>/</span>
-          <Link to="/shop" className="hover:text-rose-500">Shop</Link>
-          <span>/</span>
-          <Link to={`/shop?category=${product.category}`} className="hover:text-rose-500 capitalize">
-            {product.category.replace('-', ' ')}
-          </Link>
+          <Button variant="ghost" onClick={() => navigate('/shop')} className="p-0 h-auto font-normal text-gray-600 hover:text-rose-500">
+            Shop
+          </Button>
+          {product.categories && (
+            <>
+              <span>/</span>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate(`/shop?category=${product.categories?.slug}`)} 
+                className="p-0 h-auto font-normal text-gray-600 hover:text-rose-500 capitalize"
+              >
+                {product.categories.name}
+              </Button>
+            </>
+          )}
           <span>/</span>
           <span className="text-gray-900">{product.name}</span>
         </div>
 
         {/* Back Button */}
-        <Link to="/shop" className="inline-flex items-center gap-2 text-gray-600 hover:text-rose-500 mb-6">
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" onClick={() => navigate('/shop')} className="mb-6 p-0 text-gray-600 hover:text-rose-500">
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Shop
-        </Link>
+        </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative">
               <img
-                src={product.images[selectedImage]}
+                src={productImages[selectedImage] || product.image_url}
                 alt={product.name}
                 className="w-full h-96 lg:h-[600px] object-cover rounded-lg"
               />
-              {product.discount > 0 && (
+              {discount > 0 && (
                 <Badge className="absolute top-4 left-4 bg-rose-500 text-white">
-                  -{product.discount}% OFF
+                  -{discount}% OFF
                 </Badge>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              {product.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`border-2 rounded-lg overflow-hidden ${
-                    selectedImage === index ? 'border-rose-500' : 'border-gray-200'
-                  }`}
-                >
-                  <img
-                    src={image}
-                    alt={`${product.name} ${index + 1}`}
-                    className="w-full h-24 object-cover hover:scale-105 transition-transform"
-                  />
-                </button>
-              ))}
-            </div>
+            {productImages.length > 1 && (
+              <div className="grid grid-cols-3 gap-4">
+                {productImages.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`border-2 rounded-lg overflow-hidden ${
+                      selectedImage === index ? 'border-rose-500' : 'border-gray-200'
+                    }`}
+                  >
+                    <img
+                      src={image}
+                      alt={`${product.name} ${index + 1}`}
+                      className="w-full h-24 object-cover hover:scale-105 transition-transform"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold font-serif mb-2">{product.name}</h1>
-              <p className="text-gray-600 capitalize">{product.category.replace('-', ' ')}</p>
+              {product.categories && (
+                <p className="text-gray-600 capitalize">{product.categories.name}</p>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-3xl font-bold text-rose-500">
                 PKR {product.price.toLocaleString()}
               </span>
-              {product.originalPrice > product.price && (
+              {product.original_price && product.original_price > product.price && (
                 <span className="text-xl text-gray-500 line-through">
-                  PKR {product.originalPrice.toLocaleString()}
+                  PKR {product.original_price.toLocaleString()}
                 </span>
               )}
-              {product.discount > 0 && (
+              {discount > 0 && (
                 <Badge variant="destructive">
-                  Save PKR {(product.originalPrice - product.price).toLocaleString()}
+                  Save PKR {((product.original_price || 0) - product.price).toLocaleString()}
                 </Badge>
               )}
             </div>
 
-            <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            {product.description && (
+              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            )}
 
             {/* Stock Status */}
             <div className="flex items-center gap-2">
-              {product.inStock ? (
+              {product.stock > 0 ? (
                 <>
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   <span className="text-green-600 font-medium">In Stock ({product.stock} items)</span>
@@ -199,7 +263,7 @@ const ProductDetail = () => {
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="px-3 py-2 hover:bg-gray-100"
-                  disabled={!product.inStock}
+                  disabled={product.stock === 0}
                 >
                   -
                 </button>
@@ -207,7 +271,7 @@ const ProductDetail = () => {
                 <button
                   onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
                   className="px-3 py-2 hover:bg-gray-100"
-                  disabled={!product.inStock}
+                  disabled={product.stock === 0}
                 >
                   +
                 </button>
@@ -218,7 +282,7 @@ const ProductDetail = () => {
             <div className="space-y-3">
               <Button
                 onClick={handleBuyNow}
-                disabled={!product.inStock}
+                disabled={product.stock === 0}
                 className="w-full bg-rose-500 hover:bg-rose-600 text-white py-3 text-lg"
               >
                 Buy Now
@@ -226,7 +290,7 @@ const ProductDetail = () => {
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   onClick={handleAddToCart}
-                  disabled={!product.inStock}
+                  disabled={product.stock === 0}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
@@ -243,76 +307,14 @@ const ProductDetail = () => {
                 </Button>
               </div>
             </div>
-
-            <Separator />
-
-            {/* Product Features */}
-            <div>
-              <h3 className="font-semibold mb-3">Product Features</h3>
-              <ul className="space-y-2">
-                {product.features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2 text-gray-700">
-                    <div className="w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Care Instructions */}
-            <div>
-              <h3 className="font-semibold mb-3">Care Instructions</h3>
-              <ul className="space-y-2">
-                {product.care.map((instruction, index) => (
-                  <li key={index} className="flex items-center gap-2 text-gray-700">
-                    <div className="w-1.5 h-1.5 bg-gold-500 rounded-full"></div>
-                    {instruction}
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
         </div>
 
         {/* Related Products */}
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold font-serif mb-8">You May Also Like</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {relatedProducts.map((relatedProduct) => (
-              <Link key={relatedProduct.id} to={`/product/${relatedProduct.id}`} className="group">
-                <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
-                  <div className="relative">
-                    <img 
-                      src={relatedProduct.image} 
-                      alt={relatedProduct.name}
-                      className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {relatedProduct.discount > 0 && (
-                      <Badge className="absolute top-2 left-2 bg-rose-500">
-                        -{relatedProduct.discount}%
-                      </Badge>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-2 group-hover:text-rose-500 transition-colors">
-                      {relatedProduct.name}
-                    </h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg font-bold text-rose-500">
-                        PKR {relatedProduct.price.toLocaleString()}
-                      </span>
-                      {relatedProduct.originalPrice > relatedProduct.price && (
-                        <span className="text-sm text-gray-500 line-through">
-                          PKR {relatedProduct.originalPrice.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <RelatedProducts 
+          currentProductId={product.id} 
+          categoryId={product.category_id} 
+        />
       </div>
     </div>
   );
