@@ -81,6 +81,19 @@ const Index = () => {
     return Math.round(((originalPrice - price) / originalPrice) * 100);
   };
 
+  const getCategoryImage = (slug: string) => {
+    const imageMap: { [key: string]: string } = {
+      'dupattas': 'photo-1583391733956-6c78276477e2',
+      'ready-made': 'photo-1434389677669-e08b4cac3105',
+      'unstitched': 'photo-1558769132-cb1aea458c5e',
+      'hijabs': 'photo-1544957992-20514f595d6f',
+      'scarves': 'photo-1515372039744-b8f02a3ae446'
+    };
+    
+    const imageId = imageMap[slug] || 'photo-1434389677669-e08b4cac3105';
+    return `https://images.unsplash.com/${imageId}?w=500&h=600&fit=crop`;
+  };
+
   return (
     <div className="fashion-gradient">
       {/* Hero Section */}
@@ -132,11 +145,7 @@ const Index = () => {
                 <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group-hover:scale-105">
                   <div className="relative">
                     <img 
-                      src={`https://images.unsplash.com/photo-${
-                        category.slug === 'dupattas' ? '1583391733956-6c78276477e2' :
-                        category.slug === 'ready-made' ? '1434389677669-e08b4cac3105' :
-                        '1558769132-cb1aea458c5e'
-                      }?w=500&h=600&fit=crop`}
+                      src={getCategoryImage(category.slug)}
                       alt={category.name} 
                       className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300" 
                     />
