@@ -1,11 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useCart } from "@/hooks/useCart";
-import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -22,119 +20,118 @@ interface RelatedProductsProps {
 }
 
 const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps) => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const { addToCart } = useCart();
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchRelatedProducts = async () => {
-      try {
-        let query = supabase
-          .from('products')
-          .select('id, name, price, original_price, image_url, slug')
-          .neq('id', currentProductId)
-          .limit(4);
-
-        if (categoryId) {
-          query = query.eq('category_id', categoryId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-        setProducts(data || []);
-      } catch (error) {
-        console.error('Error fetching related products:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchRelatedProducts();
   }, [currentProductId, categoryId]);
 
-  const handleAddToCart = async (productId: string, productName: string) => {
+  const fetchRelatedProducts = async () => {
     try {
-      await addToCart(productId);
-      toast({
-        title: "Added to cart",
-        description: `${productName} has been added to your cart.`,
-      });
+      let query = supabase
+        .from('products')
+        .select('id, name, price, original_price, image_url, slug')
+        .neq('id', currentProductId)
+        .limit(4);
+
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching related products:', error);
+        return;
+      }
+
+      setRelatedProducts(data || []);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add item to cart.",
-        variant: "destructive",
-      });
+      console.error('Error fetching related products:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleProductClick = (product: Product) => {
+    navigate(`/product/${product.slug}`);
+    // Force page refresh to load new product
+    window.location.reload();
   };
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="bg-gray-300 h-48 rounded-lg mb-4"></div>
-            <div className="bg-gray-300 h-4 rounded mb-2"></div>
-            <div className="bg-gray-300 h-4 rounded w-3/4"></div>
-          </div>
-        ))}
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold font-serif mb-8">Related Products</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="bg-gray-200 aspect-square rounded-lg mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
-  if (products.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-600">No related products found.</p>
-      </div>
-    );
+  if (relatedProducts.length === 0) {
+    return null;
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {products.map((product) => (
-        <Card key={product.id} className="group hover:shadow-lg transition-shadow">
-          <CardContent className="p-0">
-            <Link to={`/product/${product.id}`}>
-              <div className="aspect-square overflow-hidden rounded-t-lg">
-                <img
-                  src={product.image_url || '/placeholder.svg'}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                />
+    <div className="mt-16">
+      <h2 className="text-2xl font-bold font-serif mb-8">Related Products</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {relatedProducts.map((product) => (
+          <Card 
+            key={product.id} 
+            className="group hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => handleProductClick(product)}
+          >
+            <CardContent className="p-0">
+              <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <span className="text-gray-400">No Image</span>
+                  </div>
+                )}
               </div>
-            </Link>
-            <div className="p-4">
-              <Link to={`/product/${product.id}`}>
-                <h3 className="font-semibold text-sm mb-2 hover:text-rose-500 transition-colors">
-                  {product.name}
-                </h3>
-              </Link>
-              <div className="flex items-center justify-between mb-3">
+              <div className="p-4">
+                <h3 className="font-medium mb-2 line-clamp-2">{product.name}</h3>
                 <div className="flex items-center space-x-2">
-                  <span className="text-rose-500 font-bold">
+                  <span className="text-lg font-bold text-rose-500">
                     PKR {product.price.toLocaleString()}
                   </span>
                   {product.original_price && product.original_price > product.price && (
-                    <span className="text-gray-400 line-through text-sm">
+                    <span className="text-sm text-gray-500 line-through">
                       PKR {product.original_price.toLocaleString()}
                     </span>
                   )}
                 </div>
+                <Button 
+                  className="w-full mt-3 bg-rose-500 hover:bg-rose-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleProductClick(product);
+                  }}
+                >
+                  View Details
+                </Button>
               </div>
-              <Button
-                onClick={() => handleAddToCart(product.id, product.name)}
-                className="w-full bg-rose-500 hover:bg-rose-600 text-xs"
-                size="sm"
-              >
-                Add to Cart
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };

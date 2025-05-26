@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ProductEditModal from "@/components/ProductEditModal";
+import ProductAddModal from "@/components/ProductAddModal";
 
 interface Order {
   id: string;
@@ -46,6 +47,7 @@ const AdminDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
@@ -179,6 +181,19 @@ const AdminDashboard = () => {
   const handleProductUpdate = () => {
     fetchDashboardData();
     handleCloseEditModal();
+  };
+
+  const handleOpenAddModal = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
+  };
+
+  const handleProductAdd = () => {
+    fetchDashboardData();
+    handleCloseAddModal();
   };
 
   const getStatusColor = (status: string) => {
@@ -343,7 +358,11 @@ const AdminDashboard = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Product Management</CardTitle>
-                  <Button size="sm" className="bg-rose-500 hover:bg-rose-600">
+                  <Button 
+                    size="sm" 
+                    className="bg-rose-500 hover:bg-rose-600"
+                    onClick={handleOpenAddModal}
+                  >
                     Add New Product
                   </Button>
                 </div>
@@ -461,6 +480,13 @@ const AdminDashboard = () => {
           isOpen={isEditModalOpen}
           onClose={handleCloseEditModal}
           onUpdate={handleProductUpdate}
+        />
+
+        {/* Product Add Modal */}
+        <ProductAddModal
+          isOpen={isAddModalOpen}
+          onClose={handleCloseAddModal}
+          onAdd={handleProductAdd}
         />
       </div>
     </div>

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: user?.email || "",
@@ -23,11 +24,70 @@ const Checkout = () => {
     city: "",
   });
 
+  useEffect(() => {
+    if (user) {
+      fetchUserInfo();
+    }
+  }, [user]);
+
+  const fetchUserInfo = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_checkout_info')
+        .select('*')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (data) {
+        setUserInfo(data);
+        setFormData({
+          name: data.name || "",
+          email: user?.email || "",
+          phone: data.phone || "",
+          address: data.address || "",
+          city: data.city || "",
+        });
+      }
+    } catch (error) {
+      console.log('No existing user info found, will collect during checkout');
+    }
+  };
+
+  const saveUserInfo = async () => {
+    if (!user) return;
+
+    try {
+      const userInfoData = {
+        user_id: user.id,
+        name: formData.name,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+      };
+
+      if (userInfo) {
+        await supabase
+          .from('user_checkout_info')
+          .update(userInfoData)
+          .eq('user_id', user.id);
+      } else {
+        await supabase
+          .from('user_checkout_info')
+          .insert([userInfoData]);
+      }
+    } catch (error) {
+      console.error('Error saving user info:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Save user info for future checkouts
+      await saveUserInfo();
+
       // Generate order number
       const orderNumber = `ALH-${Date.now()}`;
 
@@ -135,6 +195,11 @@ const Checkout = () => {
           <Card>
             <CardHeader>
               <CardTitle>Customer Details</CardTitle>
+              {!userInfo && user && (
+                <p className="text-sm text-gray-600">
+                  Please provide your details for delivery
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">

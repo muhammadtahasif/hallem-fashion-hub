@@ -8,34 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  original_price?: number;
-  stock: number;
-  image_url: string;
-  featured: boolean;
-  category_id?: string;
-  categories?: {
-    name: string;
-  };
-}
-
 interface Category {
   id: string;
   name: string;
 }
 
-interface ProductEditModalProps {
-  product: Product | null;
+interface ProductAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpdate: () => void;
+  onAdd: () => void;
 }
 
-const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditModalProps) => {
+const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -51,23 +35,11 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
   });
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name,
-        description: product.description || "",
-        price: product.price,
-        original_price: product.original_price || 0,
-        stock: product.stock,
-        image_url: product.image_url || "",
-        featured: product.featured,
-        category_id: product.category_id || "",
-      });
+    if (isOpen) {
+      fetchCategories();
+      resetForm();
     }
-  }, [product]);
+  }, [isOpen]);
 
   const fetchCategories = async () => {
     try {
@@ -83,16 +55,37 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      price: 0,
+      original_price: 0,
+      stock: 0,
+      image_url: "",
+      featured: false,
+      category_id: "",
+    });
+  };
+
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product) return;
-
     setIsLoading(true);
 
     try {
+      const slug = generateSlug(formData.name);
+      
       const { error } = await supabase
         .from('products')
-        .update({
+        .insert([{
           name: formData.name,
           description: formData.description,
           price: formData.price,
@@ -101,23 +94,22 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
           image_url: formData.image_url,
           featured: formData.featured,
           category_id: formData.category_id || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', product.id);
+          slug: slug,
+        }]);
 
       if (error) throw error;
 
       toast({
-        title: "Product updated",
-        description: "Product details have been updated successfully.",
+        title: "Product added",
+        description: "New product has been added successfully.",
       });
 
-      onUpdate();
+      onAdd();
       onClose();
     } catch (error: any) {
       toast({
-        title: "Update failed",
-        description: error.message || "Failed to update product.",
+        title: "Add failed",
+        description: error.message || "Failed to add product.",
         variant: "destructive",
       });
     } finally {
@@ -138,7 +130,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Product</DialogTitle>
+          <DialogTitle>Add New Product</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -275,7 +267,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
               disabled={isLoading}
               className="flex-1 bg-rose-500 hover:bg-rose-600"
             >
-              {isLoading ? "Updating..." : "Update Product"}
+              {isLoading ? "Adding..." : "Add Product"}
             </Button>
           </div>
         </form>
@@ -284,4 +276,4 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
   );
 };
 
-export default ProductEditModal;
+export default ProductAddModal;

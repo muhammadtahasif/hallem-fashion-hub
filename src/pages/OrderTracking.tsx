@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,66 +6,79 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const OrderTracking = () => {
-  const [trackingInfo, setTrackingInfo] = useState({
-    orderId: "",
-    phone: ""
-  });
+  const [trackingId, setTrackingId] = useState("");
   const [orderDetails, setOrderDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-
-  // Mock order data - will be replaced with real data from Google Sheets/Supabase
-  const mockOrder = {
-    id: "ALH-2024-001",
-    customerName: "Fatima Khan",
-    phone: "+92 300 1234567",
-    address: "House 123, Street 5, Gulberg, Lahore",
-    product: "Royal Blue Embroidered Dupatta",
-    quantity: 1,
-    amount: 2500,
-    orderDate: "2024-01-15",
-    status: "shipped",
-    trackingSteps: [
-      { step: "Order Placed", date: "2024-01-15", time: "10:30 AM", completed: true },
-      { step: "Order Confirmed", date: "2024-01-15", time: "02:15 PM", completed: true },
-      { step: "Processing", date: "2024-01-16", time: "11:00 AM", completed: true },
-      { step: "Shipped", date: "2024-01-17", time: "09:45 AM", completed: true },
-      { step: "Out for Delivery", date: "", time: "", completed: false },
-      { step: "Delivered", date: "", time: "", completed: false }
-    ]
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call to Google Sheets/Supabase
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            product_name,
+            quantity,
+            product_price
+          )
+        `)
+        .eq('order_number', trackingId)
+        .single();
 
-    if (trackingInfo.orderId.toLowerCase().includes('alh') || trackingInfo.phone.includes('300')) {
-      setOrderDetails(mockOrder);
+      if (error || !data) {
+        toast({
+          title: "Order not found",
+          description: "Please check your Order ID and try again.",
+          variant: "destructive"
+        });
+        setOrderDetails(null);
+        return;
+      }
+
+      // Transform the data to match our mock structure
+      const transformedOrder = {
+        id: data.order_number,
+        customerName: data.customer_name,
+        phone: data.customer_phone,
+        address: data.customer_address,
+        product: data.order_items.map(item => item.product_name).join(", "),
+        quantity: data.order_items.reduce((sum, item) => sum + item.quantity, 0),
+        amount: data.total_amount,
+        orderDate: new Date(data.created_at).toLocaleDateString(),
+        status: data.status,
+        trackingSteps: [
+          { step: "Order Placed", date: new Date(data.created_at).toLocaleDateString(), time: new Date(data.created_at).toLocaleTimeString(), completed: true },
+          { step: "Order Confirmed", date: data.status !== 'pending' ? new Date(data.created_at).toLocaleDateString() : "", time: data.status !== 'pending' ? "02:15 PM" : "", completed: data.status !== 'pending' },
+          { step: "Processing", date: ['processing', 'shipped', 'delivered'].includes(data.status) ? new Date(data.updated_at).toLocaleDateString() : "", time: ['processing', 'shipped', 'delivered'].includes(data.status) ? "11:00 AM" : "", completed: ['processing', 'shipped', 'delivered'].includes(data.status) },
+          { step: "Shipped", date: ['shipped', 'delivered'].includes(data.status) ? new Date(data.updated_at).toLocaleDateString() : "", time: ['shipped', 'delivered'].includes(data.status) ? "09:45 AM" : "", completed: ['shipped', 'delivered'].includes(data.status) },
+          { step: "Out for Delivery", date: data.status === 'delivered' ? new Date(data.updated_at).toLocaleDateString() : "", time: data.status === 'delivered' ? "10:30 AM" : "", completed: data.status === 'delivered' },
+          { step: "Delivered", date: data.status === 'delivered' ? new Date(data.updated_at).toLocaleDateString() : "", time: data.status === 'delivered' ? "02:15 PM" : "", completed: data.status === 'delivered' }
+        ]
+      };
+
+      setOrderDetails(transformedOrder);
       toast({
         title: "Order found!",
         description: "Your order details are displayed below.",
       });
-    } else {
+
+    } catch (error) {
+      console.error('Error fetching order:', error);
       toast({
-        title: "Order not found",
-        description: "Please check your Order ID or phone number and try again.",
+        title: "Error",
+        description: "Something went wrong. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTrackingInfo({
-      ...trackingInfo,
-      [e.target.name]: e.target.value
-    });
   };
 
   const getStatusColor = (status: string) => {
@@ -91,7 +103,7 @@ const OrderTracking = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold font-serif mb-4">Track Your Order</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Enter your order ID or phone number to check the status of your order
+            Enter your order ID to check the status of your order
           </p>
         </div>
 
@@ -104,30 +116,15 @@ const OrderTracking = () => {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="orderId" className="block text-sm font-medium mb-2">
-                    Order ID (Optional)
+                  <label htmlFor="trackingId" className="block text-sm font-medium mb-2">
+                    Order ID *
                   </label>
                   <Input
-                    id="orderId"
-                    name="orderId"
-                    value={trackingInfo.orderId}
-                    onChange={handleChange}
-                    placeholder="e.g., ALH-2024-001"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium mb-2">
-                    Phone Number *
-                  </label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={trackingInfo.phone}
-                    onChange={handleChange}
+                    id="trackingId"
+                    value={trackingId}
+                    onChange={(e) => setTrackingId(e.target.value)}
                     required
-                    placeholder="e.g., +92 300 1234567"
+                    placeholder="e.g., ALH-1748251380123"
                   />
                 </div>
 
