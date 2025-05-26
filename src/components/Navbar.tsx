@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,13 +25,39 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { getTotalItems } = useCart();
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,12 +71,6 @@ const Navbar = () => {
     await signOut();
     navigate('/');
   };
-
-  const categories = [
-    { name: 'Dupattas', href: '/shop?category=dupattas' },
-    { name: 'Ready-Made', href: '/shop?category=ready-made' },
-    { name: 'Unstitched', href: '/shop?category=unstitched' },
-  ];
 
   return (
     <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -75,8 +95,8 @@ const Navbar = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-white border shadow-lg">
                 {categories.map((category) => (
-                  <DropdownMenuItem key={category.name} asChild>
-                    <Link to={category.href} className="cursor-pointer">
+                  <DropdownMenuItem key={category.id} asChild>
+                    <Link to={`/shop?category=${category.slug}`} className="cursor-pointer capitalize">
                       {category.name}
                     </Link>
                   </DropdownMenuItem>
@@ -199,9 +219,9 @@ const Navbar = () => {
                     <p className="font-semibold">Categories</p>
                     {categories.map((category) => (
                       <Link 
-                        key={category.name}
-                        to={category.href} 
-                        className="block pl-4 text-gray-600"
+                        key={category.id}
+                        to={`/shop?category=${category.slug}`} 
+                        className="block pl-4 text-gray-600 capitalize"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         {category.name}

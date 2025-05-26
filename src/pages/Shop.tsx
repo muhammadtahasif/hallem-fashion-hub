@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -93,8 +92,8 @@ const Shop = () => {
           )
         `);
 
-      // Apply filters
-      if (selectedCategory) {
+      // Apply filters - only filter by category if one is selected
+      if (selectedCategory && selectedCategory !== '') {
         const category = categories.find(c => c.slug === selectedCategory);
         if (category) {
           query = query.eq('category_id', category.id);

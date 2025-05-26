@@ -4,9 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useCart } from "@/hooks/useCart";
 
 interface Product {
   id: string;
@@ -24,22 +22,22 @@ interface Category {
   id: string;
   name: string;
   slug: string;
-  description: string;
+  image_url?: string;
 }
 
 const Index = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const { addToCart } = useCart();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFeaturedProducts();
-    fetchCategories();
+    fetchData();
   }, []);
 
-  const fetchFeaturedProducts = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch featured products
+      const { data: products, error: productsError } = await supabase
         .from('products')
         .select(`
           id,
@@ -53,27 +51,35 @@ const Index = () => {
           )
         `)
         .eq('featured', true)
-        .limit(4);
+        .limit(8);
 
-      if (error) throw error;
-      setFeaturedProducts(data || []);
+      if (productsError) throw productsError;
+
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .limit(6);
+
+      if (categoriesError) throw categoriesError;
+
+      setFeaturedProducts(products || []);
+      setCategories(categoriesData || []);
     } catch (error) {
-      console.error('Error fetching featured products:', error);
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
+  const getCategoryImage = (categorySlug: string) => {
+    const imageMap: { [key: string]: string } = {
+      'dupattas': 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&h=300&fit=crop',
+      'hijabs': 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=300&fit=crop',
+      'ready-made': 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400&h=300&fit=crop',
+      'unstitched': 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=300&fit=crop'
+    };
+    return imageMap[categorySlug] || 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=300&fit=crop';
   };
 
   const calculateDiscount = (price: number, originalPrice?: number) => {
@@ -81,108 +87,99 @@ const Index = () => {
     return Math.round(((originalPrice - price) / originalPrice) * 100);
   };
 
-  const getCategoryImage = (slug: string) => {
-    const imageMap: { [key: string]: string } = {
-      'dupattas': 'photo-1583391733956-6c78276477e2',
-      'ready-made': 'photo-1434389677669-e08b4cac3105',
-      'unstitched': 'photo-1558769132-cb1aea458c5e',
-      'hijabs': 'photo-1544957992-20514f595d6f',
-      'scarves': 'photo-1515372039744-b8f02a3ae446'
-    };
-    
-    const imageId = imageMap[slug] || 'photo-1434389677669-e08b4cac3105';
-    return `https://images.unsplash.com/${imageId}?w=500&h=600&fit=crop`;
-  };
-
   return (
-    <div className="fashion-gradient">
+    <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&h=1080&fit=crop')"
-        }}>
-          <div className="absolute inset-0 bg-black/40"></div>
-        </div>
-        <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
-          <h1 className="text-5xl md:text-7xl font-bold font-serif mb-6 animate-fade-in">
-            AL - HALLEM
+      <section className="relative bg-gradient-to-r from-rose-100 to-pink-100 py-20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-4xl md:text-6xl font-bold font-serif text-gray-800 mb-6">
+            Welcome to AL - HALLEM
           </h1>
-          <p className="text-xl md:text-2xl mb-8 animate-fade-in">
-            Discover Exquisite Women's Fashion
-          </p>
-          <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
-            From elegant dupattas to premium unstitched fabrics and ready-made collections. 
-            Experience the finest in Pakistani women's fashion.
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Discover our exquisite collection of premium women's fashion. From elegant dupattas to stylish ready-made outfits.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/shop">
-              <Button size="lg" className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 text-lg">
+              <Button size="lg" className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3">
                 Shop Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/shop?category=dupattas">
-              <Button variant="outline" size="lg" className="border-white hover:bg-white px-8 py-3 text-lg text-zinc-900">
-                View Dupattas
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Featured Categories */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold font-serif mb-4">Shop by Category</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Explore our curated collections of premium women's fashion essentials
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {categories.map(category => (
-              <Link key={category.id} to={`/shop?category=${category.slug}`} className="group">
-                <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                  <div className="relative">
-                    <img 
-                      src={getCategoryImage(category.slug)}
-                      alt={category.name} 
-                      className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300" 
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                    <div className="absolute bottom-4 left-4 text-white">
-                      <h3 className="text-xl font-semibold font-serif">{category.name}</h3>
-                      <p className="text-sm opacity-90">{category.description}</p>
+      {/* Categories Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center font-serif mb-12">Shop by Categories</h2>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="bg-gray-200 h-64 rounded-lg mb-4"></div>
+                  <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {categories.map((category) => (
+                <Link key={category.id} to={`/shop?category=${category.slug}`}>
+                  <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+                    <div className="relative h-64 overflow-hidden">
+                      <img
+                        src={category.image_url || getCategoryImage(category.slug)}
+                        alt={category.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-30 transition-all duration-300"></div>
+                      <div className="absolute bottom-4 left-4">
+                        <h3 className="text-white text-xl font-semibold capitalize">{category.name}</h3>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-16 px-4 bg-white">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold font-serif mb-4">Featured Products</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Handpicked selections from our latest arrivals and bestsellers
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map(product => {
-              const discount = calculateDiscount(product.price, product.original_price);
-              return (
-                <div key={product.id} className="group">
-                  <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
+      {/* Featured Products Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center font-serif mb-12">Featured Products</h2>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="bg-gray-200 h-64 rounded-lg mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                </div>
+              ))}
+            </div>
+          ) : featuredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No featured products available at the moment.</p>
+              <Link to="/shop">
+                <Button className="mt-4 bg-rose-500 hover:bg-rose-600">
+                  Browse All Products
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => {
+                const discount = calculateDiscount(product.price, product.original_price);
+                return (
+                  <Card key={product.id} className="group hover:shadow-lg transition-shadow overflow-hidden">
                     <Link to={`/product/${product.id}`}>
                       <div className="relative">
                         <img 
                           src={product.image_url} 
                           alt={product.name}
-                          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300" 
+                          className="w-full h-64 object-cover group-hover:scale-105 transition-transform"
                         />
                         {discount > 0 && (
                           <Badge className="absolute top-2 left-2 bg-rose-500">
@@ -197,7 +194,7 @@ const Index = () => {
                           {product.name}
                         </h3>
                       </Link>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <span className="text-lg font-bold text-rose-500">
                             PKR {product.price.toLocaleString()}
@@ -209,47 +206,30 @@ const Index = () => {
                           )}
                         </div>
                       </div>
-                      <Button 
-                        onClick={() => addToCart(product.id)}
-                        className="w-full bg-rose-500 hover:bg-rose-600"
-                        size="sm"
-                      >
-                        Add to Cart
-                      </Button>
+                      <p className="text-xs text-gray-500 mt-2 capitalize">
+                        {product.categories?.name}
+                      </p>
                     </CardContent>
                   </Card>
-                </div>
-              );
-            })}
-          </div>
-          <div className="text-center mt-8">
-            <Link to="/shop">
-              <Button size="lg" variant="outline" className="hover:bg-rose-500 hover:text-white">
-                View All Products
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-16 px-4 bg-gradient-to-r from-rose-500 to-gold-500 text-white">
-        <div className="container mx-auto text-center">
-          <h2 className="text-4xl font-bold font-serif mb-4">Join Our Fashion Community</h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Be the first to know about new arrivals, exclusive offers, and fashion tips
+      {/* CTA Section */}
+      <section className="py-16 bg-rose-500 text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold font-serif mb-4">Ready to Shop?</h2>
+          <p className="text-xl mb-8 opacity-90">
+            Explore our complete collection and find your perfect style
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-            <input 
-              type="email" 
-              placeholder="Enter your email" 
-              className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-white" 
-            />
-            <Button className="bg-white text-rose-500 hover:bg-gray-100 px-8 py-3">
-              Subscribe
+          <Link to="/shop">
+            <Button size="lg" variant="outline" className="bg-white text-rose-500 hover:bg-gray-100 border-white">
+              Browse All Products
             </Button>
-          </div>
+          </Link>
         </div>
       </section>
     </div>
