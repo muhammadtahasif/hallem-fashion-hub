@@ -33,15 +33,15 @@ export function Toaster() {
           <Toast 
             key={id} 
             {...props} 
-            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[100] bg-white border border-gray-200 shadow-2xl min-w-[400px] max-w-[500px] rounded-xl animate-scale-in"
+            className="fixed top-4 right-4 z-[100] bg-white border border-gray-200 shadow-xl min-w-[350px] max-w-[450px] rounded-lg animate-slide-in-right"
           >
-            <div className="flex items-start gap-4 p-6">
+            <div className="flex items-start gap-3 p-4">
               <div className="flex-shrink-0 mt-0.5">
                 {getIcon(variant)}
               </div>
-              <div className="grid gap-2 flex-1">
+              <div className="grid gap-1 flex-1">
                 {title && (
-                  <ToastTitle className="text-gray-900 font-semibold text-base leading-tight">
+                  <ToastTitle className="text-gray-900 font-semibold text-sm leading-tight">
                     {title}
                   </ToastTitle>
                 )}
@@ -57,7 +57,7 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport className="fixed top-0 left-0 w-full h-full pointer-events-none flex items-center justify-center z-[100] p-4" />
+      <ToastViewport className="fixed top-0 right-0 flex flex-col-reverse p-4 gap-2 w-full md:max-w-[420px] list-none z-[100] outline-none" />
     </ToastProvider>
   )
 }
