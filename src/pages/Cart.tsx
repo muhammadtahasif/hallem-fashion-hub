@@ -50,7 +50,7 @@ const Cart = () => {
                 <div className="space-y-4">
                   {items.map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
-                      <Link to={`/product/${item.product?.id}`}>
+                      <Link to={`/product/${item.product_id}`}>
                         <img
                           src={item.product?.image_url}
                           alt={item.product?.name}
@@ -58,7 +58,7 @@ const Cart = () => {
                         />
                       </Link>
                       <div className="flex-1">
-                        <Link to={`/product/${item.product?.id}`}>
+                        <Link to={`/product/${item.product_id}`}>
                           <h3 className="font-semibold hover:text-rose-500 transition-colors cursor-pointer">
                             {item.product?.name}
                           </h3>
