@@ -79,8 +79,7 @@ const OrderTracking = () => {
       setOrderDetails(transformedOrder);
       toast({
         title: "Order found!",
-        description: "Your order details are displayed below.",
-        variant: "success"
+        description: "Your order details are displayed below."
       });
 
     } catch (error) {
