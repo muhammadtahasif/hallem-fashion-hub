@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -45,8 +46,26 @@ const Shop = () => {
 
   useEffect(() => {
     fetchCategories();
-    fetchProducts();
+    // Set up real-time subscription for categories
+    const channel = supabase
+      .channel('shop-categories-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'categories' },
+        () => {
+          console.log('Categories changed in shop, refetching...');
+          fetchCategories();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [categories]);
 
   useEffect(() => {
     // Update URL when filters change
@@ -66,6 +85,7 @@ const Shop = () => {
         .order('name');
 
       if (error) throw error;
+      console.log('Fetched categories in shop:', data);
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -73,6 +93,8 @@ const Shop = () => {
   };
 
   const fetchProducts = async () => {
+    if (categories.length === 0) return;
+    
     try {
       setLoading(true);
       let query = supabase
@@ -92,9 +114,10 @@ const Shop = () => {
           )
         `);
 
-      // Apply filters - only filter by category if one is selected
+      // Apply filters - filter by category if one is selected
       if (selectedCategory && selectedCategory !== '') {
         const category = categories.find(c => c.slug === selectedCategory);
+        console.log('Filtering by category:', selectedCategory, 'Found category:', category);
         if (category) {
           query = query.eq('category_id', category.id);
         }
@@ -125,6 +148,7 @@ const Shop = () => {
         product.price >= priceRange[0] && product.price <= priceRange[1]
       ) || [];
 
+      console.log('Filtered products:', filteredData);
       setProducts(filteredData);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -157,7 +181,7 @@ const Shop = () => {
                   setSelectedCategory(checked ? category.value : '');
                 }}
               />
-              <label htmlFor={category.value} className="text-sm">
+              <label htmlFor={category.value} className="text-sm capitalize">
                 {category.label}
               </label>
             </div>
@@ -200,16 +224,19 @@ const Shop = () => {
     </div>
   );
 
+  const getCurrentCategoryName = () => {
+    if (!selectedCategory) return 'All Products';
+    const category = categories.find(c => c.slug === selectedCategory);
+    return category ? category.name : 'Products';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold font-serif mb-4">
-            {selectedCategory ? 
-              categories.find(c => c.slug === selectedCategory)?.name || 'Products' : 
-              'All Products'
-            }
+          <h1 className="text-3xl font-bold font-serif mb-4 capitalize">
+            {getCurrentCategoryName()}
           </h1>
           <p className="text-gray-600">
             Discover our collection of premium women's fashion

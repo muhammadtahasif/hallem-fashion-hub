@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 const OrderTracking = () => {
   const [trackingId, setTrackingId] = useState("");
@@ -26,7 +28,13 @@ const OrderTracking = () => {
           order_items (
             product_name,
             quantity,
-            product_price
+            product_price,
+            product_id,
+            products (
+              id,
+              name,
+              image_url
+            )
           )
         `)
         .eq('order_number', trackingId)
@@ -42,14 +50,20 @@ const OrderTracking = () => {
         return;
       }
 
-      // Transform the data to match our mock structure
+      // Transform the data
       const transformedOrder = {
         id: data.order_number,
         customerName: data.customer_name,
         phone: data.customer_phone,
         address: data.customer_address,
-        product: data.order_items.map(item => item.product_name).join(", "),
-        quantity: data.order_items.reduce((sum, item) => sum + item.quantity, 0),
+        items: data.order_items.map(item => ({
+          id: item.product_id,
+          name: item.product_name,
+          quantity: item.quantity,
+          price: item.product_price,
+          image_url: item.products?.image_url || '',
+          total: item.product_price * item.quantity
+        })),
         amount: data.total_amount,
         orderDate: new Date(data.created_at).toLocaleDateString(),
         status: data.status,
@@ -67,6 +81,7 @@ const OrderTracking = () => {
       toast({
         title: "Order found!",
         description: "Your order details are displayed below.",
+        variant: "success"
       });
 
     } catch (error) {
@@ -183,13 +198,31 @@ const OrderTracking = () => {
 
                 {/* Product Details */}
                 <div>
-                  <h4 className="font-semibold mb-2">Product</h4>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{orderDetails.product}</p>
-                      <p className="text-sm text-gray-600">Quantity: {orderDetails.quantity}</p>
-                    </div>
-                    <p className="font-semibold">PKR {orderDetails.amount.toLocaleString()}</p>
+                  <h4 className="font-semibold mb-4">Ordered Items</h4>
+                  <div className="space-y-3">
+                    {orderDetails.items.map((item, index) => (
+                      <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <Link to={`/product/${item.id}`} className="flex-shrink-0">
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-16 h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                          />
+                        </Link>
+                        <div className="flex-1">
+                          <Link to={`/product/${item.id}`}>
+                            <h5 className="font-medium hover:text-rose-500 transition-colors cursor-pointer">
+                              {item.name}
+                            </h5>
+                          </Link>
+                          <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                          <p className="text-sm text-gray-600">Price: PKR {item.price.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">PKR {item.total.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

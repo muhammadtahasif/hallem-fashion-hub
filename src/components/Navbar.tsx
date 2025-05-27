@@ -37,12 +37,28 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { getTotalItems } = useCart();
 
   useEffect(() => {
     fetchCategories();
+    // Set up real-time subscription for categories
+    const channel = supabase
+      .channel('categories-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'categories' },
+        () => {
+          console.log('Categories changed, refetching...');
+          fetchCategories();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchCategories = async () => {
@@ -53,6 +69,7 @@ const Navbar = () => {
         .order('name');
 
       if (error) throw error;
+      console.log('Fetched categories:', data);
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -72,13 +89,19 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const handleCategoryClick = (categorySlug: string) => {
+    console.log('Category clicked:', categorySlug);
+    setIsDropdownOpen(false);
+    navigate(`/shop?category=${categorySlug}`);
+  };
+
   return (
     <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="text-2xl font-bold font-serif text-rose-500">
-            AL - HALLEM
+            A&Z Fabrics
           </Link>
 
           {/* Desktop Navigation */}
@@ -88,23 +111,19 @@ const Navbar = () => {
             </Link>
             
             {/* Categories Dropdown */}
-            <DropdownMenu>
+            <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <DropdownMenuTrigger className="flex items-center gap-1 text-gray-700 hover:text-rose-500 transition-colors">
                 Categories
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-white border shadow-lg">
+              <DropdownMenuContent className="bg-white border shadow-lg z-50">
                 {categories.map((category) => (
-                  <DropdownMenuItem key={category.id} asChild>
-                    <Link to={`/shop?category=${category.slug}`} className="cursor-pointer capitalize">
-                      {category.name}
-                    </Link>
+                  <DropdownMenuItem key={category.id} onSelect={() => handleCategoryClick(category.slug)}>
+                    <span className="cursor-pointer capitalize">{category.name}</span>
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuItem asChild>
-                  <Link to="/shop" className="cursor-pointer">
-                    All Products
-                  </Link>
+                <DropdownMenuItem onSelect={() => handleCategoryClick('')}>
+                  <span className="cursor-pointer">All Products</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -150,7 +169,7 @@ const Navbar = () => {
                     <User className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white border shadow-lg">
+                <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="cursor-pointer">
                       My Account
@@ -218,22 +237,26 @@ const Navbar = () => {
                   <div className="space-y-2">
                     <p className="font-semibold">Categories</p>
                     {categories.map((category) => (
-                      <Link 
+                      <button
                         key={category.id}
-                        to={`/shop?category=${category.slug}`} 
-                        className="block pl-4 text-gray-600 capitalize"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={() => {
+                          handleCategoryClick(category.slug);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="block pl-4 text-gray-600 capitalize text-left w-full"
                       >
                         {category.name}
-                      </Link>
+                      </button>
                     ))}
-                    <Link 
-                      to="/shop" 
-                      className="block pl-4 text-gray-600"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                    <button
+                      onClick={() => {
+                        handleCategoryClick('');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="block pl-4 text-gray-600 text-left w-full"
                     >
                       All Products
-                    </Link>
+                    </button>
                   </div>
                   
                   <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)}>

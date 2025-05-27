@@ -14,10 +14,6 @@ const Cart = () => {
     navigate('/checkout');
   };
 
-  const handleBuyNow = () => {
-    navigate('/checkout');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -54,13 +50,19 @@ const Cart = () => {
                 <div className="space-y-4">
                   {items.map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
-                      <img
-                        src={item.product?.image_url}
-                        alt={item.product?.name}
-                        className="w-20 h-20 object-cover rounded"
-                      />
+                      <Link to={`/product/${item.product?.id}`}>
+                        <img
+                          src={item.product?.image_url}
+                          alt={item.product?.name}
+                          className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                        />
+                      </Link>
                       <div className="flex-1">
-                        <h3 className="font-semibold">{item.product?.name}</h3>
+                        <Link to={`/product/${item.product?.id}`}>
+                          <h3 className="font-semibold hover:text-rose-500 transition-colors cursor-pointer">
+                            {item.product?.name}
+                          </h3>
+                        </Link>
                         <p className="text-rose-500 font-medium">
                           PKR {item.product?.price.toLocaleString()}
                         </p>
@@ -133,18 +135,10 @@ const Cart = () => {
                 </div>
                 <Button
                   onClick={handleCheckout}
-                  className="w-full bg-rose-500 hover:bg-rose-600 mb-2"
+                  className="w-full bg-rose-500 hover:bg-rose-600 mb-4"
                   size="lg"
                 >
                   Proceed to Checkout
-                </Button>
-                <Button
-                  onClick={handleBuyNow}
-                  variant="outline"
-                  className="w-full mb-2"
-                  size="lg"
-                >
-                  Buy Now
                 </Button>
                 <Link to="/shop">
                   <Button variant="outline" className="w-full">
