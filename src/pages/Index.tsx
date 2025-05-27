@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
 interface Product {
   id: string;
   name: string;
@@ -15,13 +13,11 @@ interface Product {
   image_url: string;
   featured: boolean;
 }
-
 interface Category {
   id: string;
   name: string;
   slug: string;
 }
-
 const Index = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -36,34 +32,27 @@ const Index = () => {
     palazzo: "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=500&h=300&fit=crop",
     accessories: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&h=300&fit=crop"
   };
-
   const getCategoryImage = (slug: string) => {
     return categoryImages[slug] || "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=500&h=300&fit=crop";
   };
-
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     try {
       // Fetch featured products
-      const { data: products, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('featured', true)
-        .limit(4);
-
+      const {
+        data: products,
+        error: productsError
+      } = await supabase.from('products').select('*').eq('featured', true).limit(4);
       if (productsError) throw productsError;
 
       // Fetch categories
-      const { data: cats, error: catsError } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-
+      const {
+        data: cats,
+        error: catsError
+      } = await supabase.from('categories').select('*').order('name');
       if (catsError) throw catsError;
-
       setFeaturedProducts(products || []);
       setCategories(cats || []);
     } catch (error) {
@@ -72,18 +61,14 @@ const Index = () => {
       setLoading(false);
     }
   };
-
   const calculateDiscount = (price: number, originalPrice?: number) => {
     if (!originalPrice || originalPrice <= price) return 0;
-    return Math.round(((originalPrice - price) / originalPrice) * 100);
+    return Math.round((originalPrice - price) / originalPrice * 100);
   };
-
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
-
-  return (
-    <div className="min-h-screen">
+  return <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative h-screen bg-gradient-to-r from-rose-50 to-pink-50 flex items-center">
         <div className="container mx-auto px-4">
@@ -107,11 +92,7 @@ const Index = () => {
               </div>
             </div>
             <div className="relative">
-              <img
-                src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600&h=800&fit=crop"
-                alt="Fashion Collection"
-                className="rounded-lg shadow-2xl"
-              />
+              
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-lg shadow-lg">
                 <div className="flex items-center space-x-2">
                   <Star className="h-5 w-5 text-yellow-400 fill-current" />
@@ -135,15 +116,10 @@ const Index = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {categories.map((category) => (
-              <Link key={category.id} to={`/shop?category=${category.slug}`}>
+            {categories.map(category => <Link key={category.id} to={`/shop?category=${category.slug}`}>
                 <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300">
                   <div className="relative h-64 overflow-hidden">
-                    <img
-                      src={getCategoryImage(category.slug)}
-                      alt={category.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
+                    <img src={getCategoryImage(category.slug)} alt={category.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                     <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-30 transition-all duration-300" />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <h3 className="text-white text-2xl font-bold font-serif capitalize">
@@ -152,8 +128,7 @@ const Index = () => {
                     </div>
                   </div>
                 </Card>
-              </Link>
-            ))}
+              </Link>)}
           </div>
         </div>
       </section>
@@ -169,23 +144,16 @@ const Index = () => {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featuredProducts.map((product) => {
-              const discount = calculateDiscount(product.price, product.original_price);
-              return (
-                <div key={product.id} className="group">
+            {featuredProducts.map(product => {
+            const discount = calculateDiscount(product.price, product.original_price);
+            return <div key={product.id} className="group">
                   <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
                     <Link to={`/product/${product.id}`}>
                       <div className="relative">
-                        <img 
-                          src={product.image_url} 
-                          alt={product.name}
-                          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        {discount > 0 && (
-                          <Badge className="absolute top-2 left-2 bg-rose-500">
+                        <img src={product.image_url} alt={product.name} className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300" />
+                        {discount > 0 && <Badge className="absolute top-2 left-2 bg-rose-500">
                             -{discount}%
-                          </Badge>
-                        )}
+                          </Badge>}
                       </div>
                     </Link>
                     <CardContent className="p-4">
@@ -198,17 +166,14 @@ const Index = () => {
                         <span className="text-lg font-bold text-rose-500">
                           PKR {product.price.toLocaleString()}
                         </span>
-                        {product.original_price && product.original_price > product.price && (
-                          <span className="text-sm text-gray-500 line-through">
+                        {product.original_price && product.original_price > product.price && <span className="text-sm text-gray-500 line-through">
                             PKR {product.original_price.toLocaleString()}
-                          </span>
-                        )}
+                          </span>}
                       </div>
                     </CardContent>
                   </Card>
-                </div>
-              );
-            })}
+                </div>;
+          })}
           </div>
           
           <div className="text-center mt-12">
@@ -227,11 +192,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <img
-                src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&h=400&fit=crop"
-                alt="About A&Z Fabrics"
-                className="rounded-lg shadow-lg"
-              />
+              <img src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&h=400&fit=crop" alt="About A&Z Fabrics" className="rounded-lg shadow-lg" />
             </div>
             <div className="space-y-6">
               <h2 className="text-4xl font-bold font-serif">About A&Z Fabrics</h2>
@@ -255,8 +216,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
