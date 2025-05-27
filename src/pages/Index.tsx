@@ -92,7 +92,7 @@ const Index = () => {
               </div>
             </div>
             <div className="relative">
-              <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600&h=800&fit=crop" alt="Fashion Collection" className="rounded-lg shadow-2xl object-scale-down" />
+              <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600&h=800&fit=crop" alt="Fashion Collection" className="rounded-lg shadow-2xl object-none" />
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-lg shadow-lg">
                 <div className="flex items-center space-x-2">
                   <Star className="h-5 w-5 text-yellow-400 fill-current" />
