@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ interface Product {
   stock: number;
   featured: boolean;
   slug: string;
+  sku: string;
   categories?: {
     name: string;
     slug: string;
@@ -92,10 +94,7 @@ const ProductDetail = () => {
       return;
     }
 
-    // Add to cart first
     addToCart(product!.id, quantity);
-    
-    // Then navigate to checkout
     navigate('/checkout');
   };
 
@@ -113,6 +112,16 @@ const ProductDetail = () => {
   const calculateDiscount = (price: number, originalPrice?: number) => {
     if (!originalPrice || originalPrice <= price) return 0;
     return Math.round(((originalPrice - price) / originalPrice) * 100);
+  };
+
+  const formatDescription = (text?: string) => {
+    if (!text) return '';
+    
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/__(.*?)__/g, '<u>$1</u>')
+      .replace(/\n/g, '<br />');
   };
 
   if (loading) {
@@ -170,7 +179,6 @@ const ProductDetail = () => {
           <span className="text-gray-900">{product.name}</span>
         </div>
 
-        {/* Back Button */}
         <Button variant="ghost" onClick={() => navigate('/shop')} className="mb-6 p-0 text-gray-600 hover:text-rose-500">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Shop
@@ -180,31 +188,33 @@ const ProductDetail = () => {
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative">
-              <img
-                src={productImages[selectedImage] || product.image_url}
-                alt={product.name}
-                className="w-full h-96 lg:h-[600px] object-cover rounded-lg"
-              />
-              {discount > 0 && (
-                <Badge className="absolute top-4 left-4 bg-rose-500 text-white">
-                  -{discount}% OFF
-                </Badge>
-              )}
+              <div className="aspect-square w-full max-w-lg mx-auto overflow-hidden rounded-lg bg-gray-100">
+                <img
+                  src={productImages[selectedImage] || product.image_url}
+                  alt={product.name}
+                  className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                />
+                {discount > 0 && (
+                  <Badge className="absolute top-4 left-4 bg-rose-500 text-white">
+                    -{discount}% OFF
+                  </Badge>
+                )}
+              </div>
             </div>
             {productImages.length > 1 && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-2 max-w-lg mx-auto">
                 {productImages.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`border-2 rounded-lg overflow-hidden ${
+                    className={`border-2 rounded-lg overflow-hidden aspect-square ${
                       selectedImage === index ? 'border-rose-500' : 'border-gray-200'
                     }`}
                   >
                     <img
                       src={image}
                       alt={`${product.name} ${index + 1}`}
-                      className="w-full h-24 object-cover hover:scale-105 transition-transform"
+                      className="w-full h-full object-contain hover:scale-105 transition-transform bg-gray-50"
                     />
                   </button>
                 ))}
@@ -216,6 +226,7 @@ const ProductDetail = () => {
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold font-serif mb-2">{product.name}</h1>
+              <p className="text-gray-600">SKU: {product.sku}</p>
               {product.categories && (
                 <p className="text-gray-600 capitalize">{product.categories.name}</p>
               )}
@@ -238,7 +249,10 @@ const ProductDetail = () => {
             </div>
 
             {product.description && (
-              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+              <div 
+                className="text-gray-700 leading-relaxed prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: formatDescription(product.description) }}
+              />
             )}
 
             {/* Stock Status */}
@@ -310,13 +324,11 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Related Products */}
         <RelatedProducts 
           currentProductId={product.id} 
           categoryId={product.category_id} 
         />
 
-        {/* Random Products */}
         <RandomProducts 
           currentProductId={product.id} 
           limit={3}
