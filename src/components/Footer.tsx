@@ -9,7 +9,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="text-2xl font-bold gradient-text font-serif mb-4">
-              AL - HALLEM
+              A&Z Fabrics
             </div>
             <p className="text-gray-300 mb-4 max-w-md">
               Your premier destination for exquisite women's fashion. From elegant dupattas to ready-made ensembles and premium unstitched fabrics.
@@ -48,7 +48,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-gray-400">
-            © 2024 AL - HALLEM. All rights reserved.
+            © 2024 A&Z Fabrics. All rights reserved.
           </p>
           <div className="flex space-x-4 mt-4 md:mt-0">
             <a href="#" className="text-sm text-gray-400 hover:text-rose-400 transition-colors">Privacy Policy</a>

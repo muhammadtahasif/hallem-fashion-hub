@@ -27,7 +27,8 @@ import {
   User, 
   Menu, 
   ChevronDown,
-  LogOut
+  LogOut,
+  Package
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
@@ -51,7 +52,6 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { getTotalItems } = useCart();
@@ -59,9 +59,9 @@ const Navbar = () => {
   useEffect(() => {
     fetchCategoriesAndSubcategories();
     
-    // Set up real-time subscription for categories
-    const categoriesChannel = supabase
-      .channel('categories-realtime')
+    // Set up real-time subscription for categories and subcategories
+    const channel = supabase
+      .channel('navbar-realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'categories' },
         (payload) => {
@@ -69,11 +69,6 @@ const Navbar = () => {
           fetchCategoriesAndSubcategories();
         }
       )
-      .subscribe();
-
-    // Set up real-time subscription for subcategories
-    const subcategoriesChannel = supabase
-      .channel('subcategories-realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'subcategories' },
         (payload) => {
@@ -84,8 +79,7 @@ const Navbar = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(categoriesChannel);
-      supabase.removeChannel(subcategoriesChannel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -124,13 +118,11 @@ const Navbar = () => {
 
   const handleCategoryClick = (categorySlug: string) => {
     console.log('Category clicked:', categorySlug);
-    setIsDropdownOpen(false);
     navigate(`/shop?category=${categorySlug}`);
   };
 
   const handleSubcategoryClick = (subcategorySlug: string) => {
     console.log('Subcategory clicked:', subcategorySlug);
-    setIsDropdownOpen(false);
     navigate(`/shop?subcategory=${subcategorySlug}`);
   };
 
@@ -232,6 +224,13 @@ const Navbar = () => {
 
           {/* Right Section */}
           <div className="flex items-center space-x-4">
+            {/* Order Tracking */}
+            <Link to="/track-order">
+              <Button variant="ghost" size="sm" className="relative">
+                <Package className="h-5 w-5" />
+              </Button>
+            </Link>
+
             {/* Cart */}
             <Link to="/cart" className="relative">
               <Button variant="ghost" size="sm" className="relative">
@@ -256,11 +255,6 @@ const Navbar = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="cursor-pointer">
                       My Account
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/track-order" className="cursor-pointer">
-                      Track Orders
                     </Link>
                   </DropdownMenuItem>
                   {user.email === 'digitaleyemedia25@gmail.com' && (
@@ -361,6 +355,10 @@ const Navbar = () => {
                   
                   <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)}>
                     Contact
+                  </Link>
+
+                  <Link to="/track-order" onClick={() => setIsMobileMenuOpen(false)}>
+                    Track Order
                   </Link>
                 </div>
               </SheetContent>

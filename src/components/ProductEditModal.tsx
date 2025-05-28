@@ -81,7 +81,20 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
         category_id: product.category_id || "",
         subcategory_id: product.subcategory_id || "",
       });
-      setProductImages(product.images || [product.image_url].filter(Boolean));
+      
+      // Show all existing images including the main image
+      const allImages = [];
+      if (product.image_url) {
+        allImages.push(product.image_url);
+      }
+      if (product.images && product.images.length > 0) {
+        product.images.forEach(img => {
+          if (img && img !== product.image_url) {
+            allImages.push(img);
+          }
+        });
+      }
+      setProductImages(allImages.length > 0 ? allImages : [""]);
     }
   }, [product]);
 
@@ -308,21 +321,35 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
             </label>
             <div className="space-y-2">
               {productImages.map((image, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={image}
-                    onChange={(e) => handleImageChange(index, e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRemoveImage(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div key={index} className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={image}
+                      onChange={(e) => handleImageChange(index, e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemoveImage(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {image && (
+                    <div className="w-20 h-20 border rounded-lg overflow-hidden">
+                      <img 
+                        src={image} 
+                        alt={`Product image ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
               <Button
