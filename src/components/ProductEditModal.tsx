@@ -18,6 +18,8 @@ interface Product {
   image_url: string;
   featured: boolean;
   category_id?: string;
+  subcategory_id?: string;
+  sku: string;
   categories?: {
     name: string;
   };
@@ -26,6 +28,12 @@ interface Product {
 interface Category {
   id: string;
   name: string;
+}
+
+interface Subcategory {
+  id: string;
+  name: string;
+  category_id: string;
 }
 
 interface ProductEditModalProps {
@@ -39,6 +47,8 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -48,10 +58,11 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     image_url: "",
     featured: false,
     category_id: "",
+    subcategory_id: "",
   });
 
   useEffect(() => {
-    fetchCategories();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -65,21 +76,32 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
         image_url: product.image_url || "",
         featured: product.featured,
         category_id: product.category_id || "",
+        subcategory_id: product.subcategory_id || "",
       });
     }
   }, [product]);
 
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
-        .order('name');
+  useEffect(() => {
+    if (formData.category_id) {
+      const filtered = subcategories.filter(sub => sub.category_id === formData.category_id);
+      setFilteredSubcategories(filtered);
+    }
+  }, [formData.category_id, subcategories]);
 
-      if (error) throw error;
-      setCategories(data || []);
+  const fetchData = async () => {
+    try {
+      const [categoriesData, subcategoriesData] = await Promise.all([
+        supabase.from('categories').select('id, name').order('name'),
+        supabase.from('subcategories').select('id, name, category_id').order('name')
+      ]);
+
+      if (categoriesData.error) throw categoriesData.error;
+      if (subcategoriesData.error) throw subcategoriesData.error;
+
+      setCategories(categoriesData.data || []);
+      setSubcategories(subcategoriesData.data || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching data:', error);
     }
   };
 
@@ -101,6 +123,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
           image_url: formData.image_url,
           featured: formData.featured,
           category_id: formData.category_id || null,
+          subcategory_id: formData.subcategory_id || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', product.id);
@@ -110,6 +133,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
       toast({
         title: "Product updated",
         description: "Product details have been updated successfully.",
+        variant: "success"
       });
 
       onUpdate();
@@ -185,6 +209,26 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
               </SelectContent>
             </Select>
           </div>
+
+          {formData.category_id && (
+            <div>
+              <label htmlFor="subcategory" className="block text-sm font-medium mb-2">
+                Subcategory
+              </label>
+              <Select value={formData.subcategory_id} onValueChange={(value) => setFormData(prev => ({ ...prev, subcategory_id: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a subcategory (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredSubcategories.map((subcategory) => (
+                    <SelectItem key={subcategory.id} value={subcategory.id}>
+                      {subcategory.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

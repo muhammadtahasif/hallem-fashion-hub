@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 import ProductEditModal from "@/components/ProductEditModal";
 import ProductAddModal from "@/components/ProductAddModal";
 import CategoryManager from "@/components/CategoryManager";
-import { Eye, Trash2, MapPin, Phone, Mail, Package, Calendar } from "lucide-react";
+import SubcategoryManager from "@/components/SubcategoryManager";
+import ReportsSection from "@/components/ReportsSection";
+import { Eye, Trash2, MapPin, Phone, Mail, Package, Calendar, Edit } from "lucide-react";
 
 interface Order {
   id: string;
@@ -28,6 +30,9 @@ interface Order {
     product_name: string;
     quantity: number;
     product_price: number;
+    products?: {
+      sku: string;
+    };
   }>;
 }
 
@@ -40,6 +45,7 @@ interface Product {
   stock: number;
   image_url: string;
   featured: boolean;
+  sku: string;
   categories?: {
     name: string;
   };
@@ -55,16 +61,11 @@ const AdminDashboard = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [stats, setStats] = useState({
-    totalOrders: 0,
-    pendingOrders: 0,
-    totalProducts: 0,
-    totalRevenue: 0,
-    todaysOrders: 0
-  });
+  const [statusChangeOrder, setStatusChangeOrder] = useState<Order | null>(null);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState("");
 
   useEffect(() => {
     if (!loading) {
@@ -78,7 +79,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch orders
+      // Fetch orders with product SKUs
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
@@ -94,14 +95,17 @@ const AdminDashboard = () => {
           order_items (
             product_name,
             quantity,
-            product_price
+            product_price,
+            products (
+              sku
+            )
           )
         `)
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
 
-      // Fetch products
+      // Fetch products with SKU
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select(`
@@ -113,6 +117,7 @@ const AdminDashboard = () => {
           stock,
           image_url,
           featured,
+          sku,
           categories (
             name
           )
@@ -122,28 +127,6 @@ const AdminDashboard = () => {
 
       setOrders(ordersData || []);
       setProducts(productsData || []);
-
-      // Calculate stats
-      const today = new Date().toDateString();
-      const todaysOrders = ordersData?.filter(order => 
-        new Date(order.created_at).toDateString() === today
-      ).length || 0;
-
-      const pendingOrders = ordersData?.filter(order => 
-        order.status === 'pending'
-      ).length || 0;
-
-      const totalRevenue = ordersData?.reduce((sum, order) => 
-        sum + order.total_amount, 0
-      ) || 0;
-
-      setStats({
-        totalOrders: ordersData?.length || 0,
-        pendingOrders,
-        totalProducts: productsData?.length || 0,
-        totalRevenue,
-        todaysOrders
-      });
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -155,11 +138,11 @@ const AdminDashboard = () => {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const updateOrderStatus = async (orderId: string, status: string) => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update({ status })
         .eq('id', orderId);
 
       if (error) throw error;
@@ -167,6 +150,7 @@ const AdminDashboard = () => {
       toast({
         title: "Order updated",
         description: "Order status has been updated successfully.",
+        variant: "success"
       });
 
       fetchDashboardData();
@@ -194,6 +178,7 @@ const AdminDashboard = () => {
       toast({
         title: "Product deleted",
         description: "Product has been deleted successfully.",
+        variant: "success"
       });
 
       fetchDashboardData();
@@ -209,32 +194,41 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleEditProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setIsEditModalOpen(true);
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to delete this order?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Order deleted",
+        description: "Order has been deleted successfully.",
+        variant: "success"
+      });
+
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete order.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleCloseEditModal = () => {
-    setSelectedProduct(null);
-    setIsEditModalOpen(false);
-  };
-
-  const handleProductUpdate = () => {
-    fetchDashboardData();
-    handleCloseEditModal();
-  };
-
-  const handleOpenAddModal = () => {
-    setIsAddModalOpen(true);
-  };
-
-  const handleCloseAddModal = () => {
-    setIsAddModalOpen(false);
-  };
-
-  const handleProductAdd = () => {
-    fetchDashboardData();
-    handleCloseAddModal();
+  const handleStatusChange = () => {
+    if (statusChangeOrder && newStatus) {
+      updateOrderStatus(statusChangeOrder.id, newStatus);
+      setIsStatusDialogOpen(false);
+      setStatusChangeOrder(null);
+      setNewStatus("");
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -243,6 +237,7 @@ const AdminDashboard = () => {
       case 'processing': return 'bg-blue-500';
       case 'shipped': return 'bg-purple-500';
       case 'delivered': return 'bg-green-500';
+      case 'cancelled': return 'bg-red-500';
       default: return 'bg-gray-500';
     }
   };
@@ -268,50 +263,20 @@ const AdminDashboard = () => {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6 mb-8">
-          <Card>
-            <CardContent className="p-4 lg:p-6">
-              <div className="text-xl lg:text-2xl font-bold text-rose-500">{stats.totalOrders}</div>
-              <p className="text-xs lg:text-sm text-gray-600">Total Orders</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 lg:p-6">
-              <div className="text-xl lg:text-2xl font-bold text-yellow-500">{stats.pendingOrders}</div>
-              <p className="text-xs lg:text-sm text-gray-600">Pending Orders</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 lg:p-6">
-              <div className="text-xl lg:text-2xl font-bold text-blue-500">{stats.totalProducts}</div>
-              <p className="text-xs lg:text-sm text-gray-600">Total Products</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 lg:p-6">
-              <div className="text-xl lg:text-2xl font-bold text-green-500">
-                PKR {(stats.totalRevenue / 1000).toFixed(0)}K
-              </div>
-              <p className="text-xs lg:text-sm text-gray-600">Total Revenue</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 lg:p-6">
-              <div className="text-xl lg:text-2xl font-bold text-purple-500">{stats.todaysOrders}</div>
-              <p className="text-xs lg:text-sm text-gray-600">Today's Orders</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Main Content */}
-        <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+        <Tabs defaultValue="reports" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+            <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
+
+          {/* Reports Tab */}
+          <TabsContent value="reports">
+            <ReportsSection />
+          </TabsContent>
 
           {/* Orders Tab */}
           <TabsContent value="orders">
@@ -339,9 +304,23 @@ const AdminDashboard = () => {
                                   {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString()}
                                 </div>
                               </div>
-                              <Badge className={`${getStatusColor(order.status)} text-white capitalize w-fit`}>
-                                {order.status}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge className={`${getStatusColor(order.status)} text-white capitalize`}>
+                                  {order.status}
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setStatusChangeOrder(order);
+                                    setNewStatus(order.status);
+                                    setIsStatusDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Change
+                                </Button>
+                              </div>
                             </div>
 
                             {/* Customer Information */}
@@ -372,13 +351,18 @@ const AdminDashboard = () => {
                               </div>
                             </div>
 
-                            {/* Order Items */}
+                            {/* Order Items with SKU */}
                             <div className="space-y-2">
                               <h4 className="font-semibold text-sm">Order Items:</h4>
                               <div className="space-y-1">
                                 {order.order_items.map((item, index) => (
                                   <div key={index} className="flex justify-between items-center text-sm p-2 bg-white rounded border">
-                                    <span>{item.product_name} × {item.quantity}</span>
+                                    <div>
+                                      <span>{item.product_name} × {item.quantity}</span>
+                                      {item.products?.sku && (
+                                        <div className="text-xs text-gray-500">SKU: {item.products.sku}</div>
+                                      )}
+                                    </div>
                                     <span className="font-medium">PKR {(item.product_price * item.quantity).toLocaleString()}</span>
                                   </div>
                                 ))}
@@ -391,44 +375,16 @@ const AdminDashboard = () => {
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex flex-col sm:flex-row lg:flex-col gap-2 lg:w-32">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                setIsOrderDetailOpen(true);
-                              }}
-                              className="w-full"
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                            {order.status === 'pending' && (
+                          <div className="flex flex-col gap-2 lg:w-32">
+                            {order.status === 'delivered' && (
                               <Button 
                                 size="sm" 
-                                onClick={() => updateOrderStatus(order.id, 'processing')}
-                                className="bg-blue-500 hover:bg-blue-600 w-full"
+                                variant="outline"
+                                onClick={() => handleDeleteOrder(order.id)}
+                                className="text-red-600 hover:text-red-700 w-full"
                               >
-                                Process
-                              </Button>
-                            )}
-                            {order.status === 'processing' && (
-                              <Button 
-                                size="sm" 
-                                onClick={() => updateOrderStatus(order.id, 'shipped')}
-                                className="bg-purple-500 hover:bg-purple-600 w-full"
-                              >
-                                Ship
-                              </Button>
-                            )}
-                            {order.status === 'shipped' && (
-                              <Button 
-                                size="sm" 
-                                onClick={() => updateOrderStatus(order.id, 'delivered')}
-                                className="bg-green-500 hover:bg-green-600 w-full"
-                              >
-                                Deliver
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
                               </Button>
                             )}
                           </div>
@@ -450,7 +406,7 @@ const AdminDashboard = () => {
                   <Button 
                     size="sm" 
                     className="bg-rose-500 hover:bg-rose-600"
-                    onClick={handleOpenAddModal}
+                    onClick={() => setIsAddModalOpen(true)}
                   >
                     Add New Product
                   </Button>
@@ -473,6 +429,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="flex-1">
                             <p className="font-medium">{product.name}</p>
+                            <p className="text-sm text-gray-600">SKU: {product.sku}</p>
                             <p className="text-sm text-gray-600">{product.categories?.name}</p>
                             <p className="text-sm font-medium">PKR {product.price.toLocaleString()}</p>
                           </div>
@@ -489,7 +446,10 @@ const AdminDashboard = () => {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleEditProduct(product)}
+                            onClick={() => {
+                              setSelectedProduct(product);
+                              setIsEditModalOpen(true);
+                            }}
                           >
                             Edit
                           </Button>
@@ -515,7 +475,10 @@ const AdminDashboard = () => {
 
           {/* Categories Tab */}
           <TabsContent value="categories">
-            <CategoryManager />
+            <div className="space-y-6">
+              <CategoryManager />
+              <SubcategoryManager />
+            </div>
           </TabsContent>
 
           {/* Settings Tab */}
@@ -578,22 +541,56 @@ const AdminDashboard = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Product Edit Modal */}
+        {/* Modals */}
         <ProductEditModal
           product={selectedProduct}
           isOpen={isEditModalOpen}
-          onClose={handleCloseEditModal}
-          onUpdate={handleProductUpdate}
+          onClose={() => {
+            setSelectedProduct(null);
+            setIsEditModalOpen(false);
+          }}
+          onUpdate={fetchDashboardData}
         />
 
-        {/* Product Add Modal */}
         <ProductAddModal
           isOpen={isAddModalOpen}
-          onClose={handleCloseAddModal}
-          onAdd={handleProductAdd}
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={fetchDashboardData}
         />
 
-        {/* Delete Confirmation Dialog */}
+        {/* Status Change Dialog */}
+        <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Order Status</DialogTitle>
+              <DialogDescription>
+                Select the new status for order {statusChangeOrder?.order_number}
+              </DialogDescription>
+            </DialogHeader>
+            <Select value={newStatus} onValueChange={setNewStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="shipped">Shipped</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleStatusChange} className="bg-rose-500 hover:bg-rose-600">
+                Update Status
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Product Dialog */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <DialogContent>
             <DialogHeader>

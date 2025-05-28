@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -84,42 +83,42 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section - Made more responsive */}
-      <section className="relative min-h-[70vh] lg:h-screen bg-gradient-to-r from-rose-50 to-pink-50 flex items-center py-12 lg:py-0">
+      {/* Hero Section - Made smaller and more responsive */}
+      <section className="relative min-h-[60vh] lg:min-h-[70vh] bg-gradient-to-r from-rose-50 to-pink-50 flex items-center py-8 lg:py-12">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div className="space-y-6 lg:space-y-8 text-center lg:text-left">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif text-gray-900 leading-tight">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center">
+            <div className="space-y-4 lg:space-y-6 text-center lg:text-left">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold font-serif text-gray-900 leading-tight">
                 Elegant Fashion
                 <span className="text-rose-500 block">Collection</span>
               </h1>
-              <p className="text-lg lg:text-xl text-gray-600 leading-relaxed max-w-lg mx-auto lg:mx-0">
+              <p className="text-base lg:text-lg text-gray-600 leading-relaxed max-w-lg mx-auto lg:mx-0">
                 Discover timeless pieces that blend tradition with contemporary style. 
                 Each garment is crafted with precision and attention to detail.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                 <Link to="/shop">
-                  <Button size="lg" className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 w-full sm:w-auto">
+                  <Button size="lg" className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-3 w-full sm:w-auto">
                     Shop Now
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
               </div>
             </div>
             <div className="relative flex justify-center lg:justify-end">
               {/* Made image smaller and more responsive */}
-              <div className="relative w-full max-w-sm lg:max-w-md xl:max-w-lg">
+              <div className="relative w-full max-w-xs sm:max-w-sm lg:max-w-md">
                 <img 
-                  src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=500&h=600&fit=crop" 
+                  src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&h=500&fit=crop" 
                   alt="Fashion Collection" 
-                  className="w-full h-auto rounded-lg shadow-2xl object-cover aspect-[3/4]" 
+                  className="w-full h-auto rounded-lg shadow-xl object-cover aspect-[3/4]" 
                 />
-                <div className="absolute -bottom-4 -left-4 lg:-bottom-6 lg:-left-6 bg-white p-4 lg:p-6 rounded-lg shadow-lg">
+                <div className="absolute -bottom-3 -left-3 lg:-bottom-4 lg:-left-4 bg-white p-3 lg:p-4 rounded-lg shadow-lg">
                   <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4 lg:h-5 lg:w-5 text-yellow-400 fill-current" />
-                    <span className="font-semibold text-sm lg:text-base">4.9/5</span>
+                    <Star className="h-3 w-3 lg:h-4 lg:w-4 text-yellow-400 fill-current" />
+                    <span className="font-semibold text-xs lg:text-sm">4.9/5</span>
                   </div>
-                  <p className="text-xs lg:text-sm text-gray-600">1000+ Happy Customers</p>
+                  <p className="text-xs text-gray-600">1000+ Happy Customers</p>
                 </div>
               </div>
             </div>
@@ -127,7 +126,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Categories Section - Improved responsiveness */}
+      {/* Categories Section - Keep existing code */}
       <section className="py-16 lg:py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 lg:mb-16">
@@ -161,7 +160,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Products - Improved grid responsiveness */}
+      {/* Featured Products - Keep existing code */}
       <section className="py-16 lg:py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 lg:mb-16">
@@ -225,7 +224,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* About Section - Improved responsiveness */}
+      {/* About Section - Keep existing code */}
       <section className="py-16 lg:py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">

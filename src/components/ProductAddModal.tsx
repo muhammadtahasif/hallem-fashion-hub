@@ -13,6 +13,12 @@ interface Category {
   name: string;
 }
 
+interface Subcategory {
+  id: string;
+  name: string;
+  category_id: string;
+}
+
 interface ProductAddModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,6 +29,8 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -32,26 +40,38 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
     image_url: "",
     featured: false,
     category_id: "",
+    subcategory_id: "",
   });
 
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      fetchData();
       resetForm();
     }
   }, [isOpen]);
 
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
-        .order('name');
+  useEffect(() => {
+    if (formData.category_id) {
+      const filtered = subcategories.filter(sub => sub.category_id === formData.category_id);
+      setFilteredSubcategories(filtered);
+      setFormData(prev => ({ ...prev, subcategory_id: "" }));
+    }
+  }, [formData.category_id, subcategories]);
 
-      if (error) throw error;
-      setCategories(data || []);
+  const fetchData = async () => {
+    try {
+      const [categoriesData, subcategoriesData] = await Promise.all([
+        supabase.from('categories').select('id, name').order('name'),
+        supabase.from('subcategories').select('id, name, category_id').order('name')
+      ]);
+
+      if (categoriesData.error) throw categoriesData.error;
+      if (subcategoriesData.error) throw subcategoriesData.error;
+
+      setCategories(categoriesData.data || []);
+      setSubcategories(subcategoriesData.data || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching data:', error);
     }
   };
 
@@ -65,6 +85,7 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
       image_url: "",
       featured: false,
       category_id: "",
+      subcategory_id: "",
     });
   };
 
@@ -76,12 +97,19 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
       .replace(/-+/g, '-');
   };
 
+  const generateSKU = (name: string) => {
+    const timestamp = Date.now().toString().slice(-6);
+    const namePrefix = name.slice(0, 3).toUpperCase();
+    return `SKU-${namePrefix}-${timestamp}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       const slug = generateSlug(formData.name);
+      const sku = generateSKU(formData.name);
       
       const { error } = await supabase
         .from('products')
@@ -94,7 +122,9 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
           image_url: formData.image_url,
           featured: formData.featured,
           category_id: formData.category_id || null,
+          subcategory_id: formData.subcategory_id || null,
           slug: slug,
+          sku: sku,
         }]);
 
       if (error) throw error;
@@ -102,6 +132,7 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
       toast({
         title: "Product added",
         description: "New product has been added successfully.",
+        variant: "success"
       });
 
       onAdd();
@@ -177,6 +208,26 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
               </SelectContent>
             </Select>
           </div>
+
+          {formData.category_id && (
+            <div>
+              <label htmlFor="subcategory" className="block text-sm font-medium mb-2">
+                Subcategory
+              </label>
+              <Select value={formData.subcategory_id} onValueChange={(value) => setFormData(prev => ({ ...prev, subcategory_id: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a subcategory (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredSubcategories.map((subcategory) => (
+                    <SelectItem key={subcategory.id} value={subcategory.id}>
+                      {subcategory.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
