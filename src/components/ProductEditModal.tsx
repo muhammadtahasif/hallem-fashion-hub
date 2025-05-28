@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Plus, X } from "lucide-react";
 
 interface Product {
   id: string;
@@ -16,6 +17,7 @@ interface Product {
   original_price?: number;
   stock: number;
   image_url: string;
+  images?: string[];
   featured: boolean;
   category_id?: string;
   subcategory_id?: string;
@@ -49,6 +51,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
+  const [productImages, setProductImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -78,6 +81,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
         category_id: product.category_id || "",
         subcategory_id: product.subcategory_id || "",
       });
+      setProductImages(product.images || [product.image_url].filter(Boolean));
     }
   }, [product]);
 
@@ -105,6 +109,21 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     }
   };
 
+  const handleAddImage = () => {
+    setProductImages([...productImages, ""]);
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const newImages = productImages.filter((_, i) => i !== index);
+    setProductImages(newImages);
+  };
+
+  const handleImageChange = (index: number, value: string) => {
+    const newImages = [...productImages];
+    newImages[index] = value;
+    setProductImages(newImages);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product) return;
@@ -112,6 +131,10 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     setIsLoading(true);
 
     try {
+      // Filter out empty image URLs
+      const validImages = productImages.filter(img => img.trim() !== "");
+      const mainImage = validImages[0] || formData.image_url;
+
       const { error } = await supabase
         .from('products')
         .update({
@@ -120,7 +143,8 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
           price: formData.price,
           original_price: formData.original_price || null,
           stock: formData.stock,
-          image_url: formData.image_url,
+          image_url: mainImage,
+          images: validImages.length > 0 ? validImages : null,
           featured: formData.featured,
           category_id: formData.category_id || null,
           subcategory_id: formData.subcategory_id || null,
@@ -133,7 +157,6 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
       toast({
         title: "Product updated",
         description: "Product details have been updated successfully.",
-        variant: "default"
       });
 
       onUpdate();
@@ -160,7 +183,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Product</DialogTitle>
         </DialogHeader>
@@ -189,6 +212,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
               value={formData.description}
               onChange={handleChange}
               rows={3}
+              placeholder="Use **bold** for bold text, *italic* for italic, __underline__ for underline"
             />
           </div>
 
@@ -279,16 +303,38 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
           </div>
 
           <div>
-            <label htmlFor="image_url" className="block text-sm font-medium mb-2">
-              Image URL
+            <label className="block text-sm font-medium mb-2">
+              Product Images
             </label>
-            <Input
-              id="image_url"
-              name="image_url"
-              value={formData.image_url}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg"
-            />
+            <div className="space-y-2">
+              {productImages.map((image, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={image}
+                    onChange={(e) => handleImageChange(index, e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemoveImage(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddImage}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Image
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -59,24 +58,26 @@ const Navbar = () => {
 
   useEffect(() => {
     fetchCategoriesAndSubcategories();
-    // Set up real-time subscription for categories and subcategories
+    
+    // Set up real-time subscription for categories
     const categoriesChannel = supabase
-      .channel('categories-changes')
+      .channel('categories-realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'categories' },
-        () => {
-          console.log('Categories changed, refetching...');
+        (payload) => {
+          console.log('Categories changed:', payload);
           fetchCategoriesAndSubcategories();
         }
       )
       .subscribe();
 
+    // Set up real-time subscription for subcategories
     const subcategoriesChannel = supabase
-      .channel('subcategories-changes')
+      .channel('subcategories-realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'subcategories' },
-        () => {
-          console.log('Subcategories changed, refetching...');
+        (payload) => {
+          console.log('Subcategories changed:', payload);
           fetchCategoriesAndSubcategories();
         }
       )

@@ -255,12 +255,23 @@ const CategoryManager = () => {
             ) : (
               categories.map((category) => (
                 <div key={category.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <h4 className="font-medium capitalize">{category.name}</h4>
-                    <p className="text-sm text-gray-500">Slug: {category.slug}</p>
-                    {category.description && (
-                      <p className="text-sm text-gray-600 mt-1">{category.description}</p>
+                  <div className="flex items-center gap-4 flex-1">
+                    {category.image_url && (
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0">
+                        <img 
+                          src={category.image_url} 
+                          alt={category.name}
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      </div>
                     )}
+                    <div className="flex-1">
+                      <h4 className="font-medium capitalize">{category.name}</h4>
+                      <p className="text-sm text-gray-500">Slug: {category.slug}</p>
+                      {category.description && (
+                        <p className="text-sm text-gray-600 mt-1">{category.description}</p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
