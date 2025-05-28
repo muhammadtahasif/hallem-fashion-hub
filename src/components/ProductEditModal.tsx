@@ -133,7 +133,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
       toast({
         title: "Product updated",
         description: "Product details have been updated successfully.",
-        variant: "success"
+        variant: "default"
       });
 
       onUpdate();

@@ -132,7 +132,7 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
       toast({
         title: "Product added",
         description: "New product has been added successfully.",
-        variant: "success"
+        variant: "default"
       });
 
       onAdd();

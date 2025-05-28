@@ -150,7 +150,7 @@ const AdminDashboard = () => {
       toast({
         title: "Order updated",
         description: "Order status has been updated successfully.",
-        variant: "success"
+        variant: "default"
       });
 
       fetchDashboardData();
@@ -178,7 +178,7 @@ const AdminDashboard = () => {
       toast({
         title: "Product deleted",
         description: "Product has been deleted successfully.",
-        variant: "success"
+        variant: "default"
       });
 
       fetchDashboardData();
@@ -208,7 +208,7 @@ const AdminDashboard = () => {
       toast({
         title: "Order deleted",
         description: "Order has been deleted successfully.",
-        variant: "success"
+        variant: "default"
       });
 
       fetchDashboardData();
