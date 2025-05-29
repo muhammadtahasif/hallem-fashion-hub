@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +15,7 @@ import ProductAddModal from "@/components/ProductAddModal";
 import CategoryManager from "@/components/CategoryManager";
 import SubcategoryManager from "@/components/SubcategoryManager";
 import ReportsSection from "@/components/ReportsSection";
-import { Eye, Trash2, MapPin, Phone, Mail, Package, Calendar, Edit } from "lucide-react";
+import { Eye, Trash2, MapPin, Phone, Mail, Package, Calendar, Edit, Truck } from "lucide-react";
 
 interface Order {
   id: string;
@@ -66,6 +67,7 @@ const AdminDashboard = () => {
   const [statusChangeOrder, setStatusChangeOrder] = useState<Order | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
+  const [shippingCharges, setShippingCharges] = useState("0");
 
   useEffect(() => {
     if (!loading) {
@@ -74,8 +76,25 @@ const AdminDashboard = () => {
         return;
       }
       fetchDashboardData();
+      loadShippingCharges();
     }
   }, [user, loading]);
+
+  const loadShippingCharges = () => {
+    const savedCharges = localStorage.getItem('shippingCharges');
+    if (savedCharges) {
+      setShippingCharges(savedCharges);
+    }
+  };
+
+  const saveShippingCharges = () => {
+    localStorage.setItem('shippingCharges', shippingCharges);
+    toast({
+      title: "Shipping charges updated",
+      description: "Shipping charges have been saved successfully.",
+      variant: "default"
+    });
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -493,7 +512,7 @@ const AdminDashboard = () => {
                     <label className="block text-sm font-medium mb-2">Store Name</label>
                     <input
                       type="text"
-                      defaultValue="AL - HALLEM"
+                      defaultValue="A&Z Fabrics"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                   </div>
@@ -514,6 +533,40 @@ const AdminDashboard = () => {
                     />
                   </div>
                   <Button className="w-full">Update Settings</Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-5 w-5" />
+                    Shipping Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label htmlFor="shippingCharges" className="block text-sm font-medium mb-2">
+                      Shipping Charges (PKR)
+                    </label>
+                    <Input
+                      id="shippingCharges"
+                      type="number"
+                      min="0"
+                      value={shippingCharges}
+                      onChange={(e) => setShippingCharges(e.target.value)}
+                      placeholder="Enter shipping charges"
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This amount will be added to every order
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={saveShippingCharges} 
+                    className="w-full bg-rose-500 hover:bg-rose-600"
+                  >
+                    Save Shipping Charges
+                  </Button>
                 </CardContent>
               </Card>
 

@@ -1,15 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -25,83 +19,19 @@ import {
   Search, 
   ShoppingCart, 
   User, 
-  Menu, 
-  ChevronDown,
+  Menu,
   LogOut,
   Package
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { supabase } from "@/integrations/supabase/client";
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface Subcategory {
-  id: string;
-  name: string;
-  slug: string;
-  category_id: string;
-}
 
 const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { getTotalItems } = useCart();
-
-  useEffect(() => {
-    fetchCategoriesAndSubcategories();
-    
-    // Set up real-time subscription for categories and subcategories
-    const channel = supabase
-      .channel('navbar-realtime')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'categories' },
-        (payload) => {
-          console.log('Categories changed:', payload);
-          fetchCategoriesAndSubcategories();
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'subcategories' },
-        (payload) => {
-          console.log('Subcategories changed:', payload);
-          fetchCategoriesAndSubcategories();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const fetchCategoriesAndSubcategories = async () => {
-    try {
-      const [categoriesData, subcategoriesData] = await Promise.all([
-        supabase.from('categories').select('*').order('name'),
-        supabase.from('subcategories').select('*').order('name')
-      ]);
-
-      if (categoriesData.error) throw categoriesData.error;
-      if (subcategoriesData.error) throw subcategoriesData.error;
-
-      console.log('Fetched categories:', categoriesData.data);
-      console.log('Fetched subcategories:', subcategoriesData.data);
-      
-      setCategories(categoriesData.data || []);
-      setSubcategories(subcategoriesData.data || []);
-    } catch (error) {
-      console.error('Error fetching categories and subcategories:', error);
-    }
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,22 +42,10 @@ const Navbar = () => {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  const handleCategoryClick = (categorySlug: string) => {
-    console.log('Category clicked:', categorySlug);
-    navigate(`/shop?category=${categorySlug}`);
-  };
-
-  const handleSubcategoryClick = (subcategorySlug: string) => {
-    console.log('Subcategory clicked:', subcategorySlug);
-    navigate(`/shop?subcategory=${subcategorySlug}`);
-  };
-
-  const getCategorySubcategories = (categoryId: string) => {
-    return subcategories.filter(sub => sub.category_id === categoryId);
+    if (confirm("Are you sure you want to sign out?")) {
+      await signOut();
+      navigate('/');
+    }
   };
 
   return (
@@ -145,63 +63,9 @@ const Navbar = () => {
               Home
             </Link>
             
-            {/* Categories Navigation Menu */}
-            <NavigationMenu>
-              <NavigationMenuList>
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className="text-gray-700 hover:text-rose-500 transition-colors bg-transparent">
-                    Categories
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent className="bg-white border shadow-lg p-4 min-w-[300px]">
-                    <div className="grid gap-2">
-                      <button
-                        onClick={() => handleCategoryClick('')}
-                        className="text-left px-3 py-2 hover:bg-gray-100 rounded-md font-medium"
-                      >
-                        All Products
-                      </button>
-                      {categories.map((category) => {
-                        const categorySubcategories = getCategorySubcategories(category.id);
-                        
-                        if (categorySubcategories.length > 0) {
-                          return (
-                            <div key={category.id} className="space-y-1">
-                              <button
-                                onClick={() => handleCategoryClick(category.slug)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md font-medium capitalize"
-                              >
-                                {category.name}
-                              </button>
-                              <div className="ml-4 space-y-1">
-                                {categorySubcategories.map((subcategory) => (
-                                  <button
-                                    key={subcategory.id}
-                                    onClick={() => handleSubcategoryClick(subcategory.slug)}
-                                    className="w-full text-left px-3 py-1 text-sm text-gray-600 hover:text-rose-500 hover:bg-gray-50 rounded-md capitalize"
-                                  >
-                                    {subcategory.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          return (
-                            <button
-                              key={category.id}
-                              onClick={() => handleCategoryClick(category.slug)}
-                              className="text-left px-3 py-2 hover:bg-gray-100 rounded-md capitalize"
-                            >
-                              {category.name}
-                            </button>
-                          );
-                        }
-                      })}
-                    </div>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
+            <Link to="/shop" className="text-gray-700 hover:text-rose-500 transition-colors">
+              Shop
+            </Link>
 
             <Link to="/contact" className="text-gray-700 hover:text-rose-500 transition-colors">
               Contact
@@ -311,47 +175,9 @@ const Navbar = () => {
                     Home
                   </Link>
                   
-                  <div className="space-y-2">
-                    <p className="font-semibold">Categories</p>
-                    <button
-                      onClick={() => {
-                        handleCategoryClick('');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block pl-4 text-gray-600 text-left w-full"
-                    >
-                      All Products
-                    </button>
-                    {categories.map((category) => {
-                      const categorySubcategories = getCategorySubcategories(category.id);
-                      
-                      return (
-                        <div key={category.id} className="space-y-1">
-                          <button
-                            onClick={() => {
-                              handleCategoryClick(category.slug);
-                              setIsMobileMenuOpen(false);
-                            }}
-                            className="block pl-4 text-gray-600 capitalize text-left w-full font-medium"
-                          >
-                            {category.name}
-                          </button>
-                          {categorySubcategories.map((subcategory) => (
-                            <button
-                              key={subcategory.id}
-                              onClick={() => {
-                                handleSubcategoryClick(subcategory.slug);
-                                setIsMobileMenuOpen(false);
-                              }}
-                              className="block pl-8 text-gray-500 capitalize text-left w-full text-sm"
-                            >
-                              {subcategory.name}
-                            </button>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <Link to="/shop" onClick={() => setIsMobileMenuOpen(false)}>
+                    Shop
+                  </Link>
                   
                   <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)}>
                     Contact
