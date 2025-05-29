@@ -1,18 +1,16 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   Menu, 
   X, 
@@ -20,22 +18,8 @@ import {
   ShoppingCart, 
   LogOut, 
   Package,
-  ChevronDown 
+  Settings
 } from "lucide-react";
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  subcategories?: Subcategory[];
-}
-
-interface Subcategory {
-  id: string;
-  name: string;
-  slug: string;
-  category_id: string;
-}
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -43,95 +27,18 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    fetchCategories();
-    
-    // Set up real-time subscription for categories
-    const categoriesChannel = supabase
-      .channel('categories-navbar-realtime')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'categories' },
-        (payload) => {
-          console.log('Categories changed in navbar:', payload);
-          fetchCategories();
-        }
-      )
-      .subscribe();
-
-    // Set up real-time subscription for subcategories
-    const subcategoriesChannel = supabase
-      .channel('subcategories-navbar-realtime')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'subcategories' },
-        (payload) => {
-          console.log('Subcategories changed in navbar:', payload);
-          fetchCategories();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(categoriesChannel);
-      supabase.removeChannel(subcategoriesChannel);
-    };
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-
-      if (categoriesError) throw categoriesError;
-
-      const { data: subcategoriesData, error: subcategoriesError } = await supabase
-        .from('subcategories')
-        .select('*')
-        .order('name');
-
-      if (subcategoriesError) throw subcategoriesError;
-
-      // Group subcategories by category
-      const categoriesWithSubs = (categoriesData || []).map(category => ({
-        ...category,
-        subcategories: (subcategoriesData || []).filter(sub => sub.category_id === category.id)
-      }));
-
-      setCategories(categoriesWithSubs);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/');
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      await signOut();
+      navigate('/');
+    }
   };
 
-  const handleCategoryClick = (categorySlug: string) => {
-    const currentParams = new URLSearchParams(location.search);
-    currentParams.set('category', categorySlug);
-    currentParams.delete('subcategory'); // Clear subcategory when selecting main category
-    
-    // Navigate to shop page with the category filter
-    navigate(`/shop?${currentParams.toString()}`);
-    setIsMenuOpen(false);
-  };
-
-  const handleSubcategoryClick = (categorySlug: string, subcategorySlug: string) => {
-    const currentParams = new URLSearchParams(location.search);
-    currentParams.set('category', categorySlug);
-    currentParams.set('subcategory', subcategorySlug);
-    
-    // Navigate to shop page with the category and subcategory filters
-    navigate(`/shop?${currentParams.toString()}`);
-    setIsMenuOpen(false);
-  };
+  const isAdmin = user?.email === 'digitaleyemedia25@gmail.com';
 
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50">
@@ -149,48 +56,6 @@ const Navbar = () => {
             <Link to="/" className="text-gray-700 hover:text-rose-500 transition-colors">
               Home
             </Link>
-            
-            {/* Categories Dropdown */}
-            <NavigationMenu>
-              <NavigationMenuList>
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className="text-gray-700 hover:text-rose-500 transition-colors">
-                    Categories
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <div className="grid gap-3 p-6 w-[600px] grid-cols-2">
-                      {categories.map((category) => (
-                        <div key={category.id} className="space-y-2">
-                          <NavigationMenuLink asChild>
-                            <button
-                              onClick={() => handleCategoryClick(category.slug)}
-                              className="block w-full text-left p-2 hover:bg-gray-50 rounded-md transition-colors font-medium text-gray-900 capitalize"
-                            >
-                              {category.name}
-                            </button>
-                          </NavigationMenuLink>
-                          {category.subcategories && category.subcategories.length > 0 && (
-                            <div className="ml-4 space-y-1">
-                              {category.subcategories.map((subcategory) => (
-                                <NavigationMenuLink key={subcategory.id} asChild>
-                                  <button
-                                    onClick={() => handleSubcategoryClick(category.slug, subcategory.slug)}
-                                    className="block w-full text-left p-1 hover:bg-gray-50 rounded-md transition-colors text-sm text-gray-600 capitalize"
-                                  >
-                                    {subcategory.name}
-                                  </button>
-                                </NavigationMenuLink>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
-
             <Link to="/shop" className="text-gray-700 hover:text-rose-500 transition-colors">
               Shop
             </Link>
@@ -219,17 +84,33 @@ const Navbar = () => {
             {/* User menu */}
             {user ? (
               <div className="hidden lg:flex items-center space-x-2">
-                <Link to="/account" className="text-gray-700 hover:text-rose-500 transition-colors">
-                  <User className="h-5 w-5" />
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="text-gray-700 hover:text-rose-500"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-rose-500">
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link to="/account" className="cursor-pointer">
+                        <User className="h-4 w-4 mr-2" />
+                        Account
+                      </Link>
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="cursor-pointer">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Admin Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <div className="hidden lg:flex items-center space-x-2">
@@ -263,35 +144,6 @@ const Navbar = () => {
               >
                 Home
               </Link>
-              
-              {/* Mobile Categories */}
-              <div className="space-y-1">
-                <div className="px-3 py-2 text-gray-700 font-medium">Categories</div>
-                {categories.map((category) => (
-                  <div key={category.id} className="ml-4 space-y-1">
-                    <button
-                      onClick={() => handleCategoryClick(category.slug)}
-                      className="block w-full text-left px-3 py-2 text-gray-600 hover:text-rose-500 transition-colors capitalize"
-                    >
-                      {category.name}
-                    </button>
-                    {category.subcategories && category.subcategories.length > 0 && (
-                      <div className="ml-4 space-y-1">
-                        {category.subcategories.map((subcategory) => (
-                          <button
-                            key={subcategory.id}
-                            onClick={() => handleSubcategoryClick(category.slug, subcategory.slug)}
-                            className="block w-full text-left px-3 py-1 text-sm text-gray-500 hover:text-rose-500 transition-colors capitalize"
-                          >
-                            {subcategory.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
               <Link
                 to="/shop"
                 className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
@@ -324,10 +176,22 @@ const Navbar = () => {
                   >
                     Account
                   </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
+                      const confirmed = window.confirm("Are you sure you want to log out?");
+                      if (confirmed) {
+                        handleLogout();
+                        setIsMenuOpen(false);
+                      }
                     }}
                     className="block w-full text-left px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
                   >
