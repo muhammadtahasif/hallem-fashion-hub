@@ -33,61 +33,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { order }: OrderNotificationRequest = await req.json();
     console.log("Order data:", order);
 
-    // Send email to customer
-    const customerEmailResponse = await resend.emails.send({
-      from: "A&Z Fabrics <orders@al-hallem.com>",
-      to: [order.customer_email],
-      subject: `Order Confirmation - ${order.order_number}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #e11d48; font-size: 28px; margin: 0;">A&Z Fabrics</h1>
-            <p style="color: #666; margin: 5px 0;">Premium Fashion Collection</p>
-          </div>
-          
-          <h2 style="color: #333; border-bottom: 2px solid #e11d48; padding-bottom: 10px;">Thank you for your order!</h2>
-          <p>Dear ${order.customer_name},</p>
-          <p>We have received your order and it's being processed. You will receive another email once your order has been shipped.</p>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #333; margin-top: 0;">Order Details:</h3>
-            <p><strong>Order Number:</strong> ${order.order_number}</p>
-            <p><strong>Total Amount:</strong> PKR ${order.total_amount.toLocaleString()}</p>
-            <p><strong>Delivery Address:</strong> ${order.customer_address}, ${order.customer_city}</p>
-          </div>
-
-          <h3 style="color: #333;">Items Ordered:</h3>
-          <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
-            <thead>
-              <tr style="background: #f8f9fa;">
-                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Product</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Quantity</th>
-                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${order.items.map(item => `
-                <tr>
-                  <td style="padding: 12px; border: 1px solid #ddd;">${item.product_name}</td>
-                  <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${item.quantity}</td>
-                  <td style="padding: 12px; text-align: right; border: 1px solid #ddd;">PKR ${(item.product_price * item.quantity).toLocaleString()}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-
-          <div style="border-top: 2px solid #e11d48; padding-top: 20px; margin-top: 30px;">
-            <p>We'll contact you soon to confirm your order details and provide tracking information.</p>
-            <p>If you have any questions, please don't hesitate to contact us.</p>
-            <p style="margin-top: 30px;">Best regards,<br><strong>A&Z Fabrics Team</strong></p>
-          </div>
-        </div>
-      `,
-    });
-
-    console.log("Customer email sent:", customerEmailResponse);
-
-    // Send email to admin
+    // Send email to admin first
     const adminEmailResponse = await resend.emails.send({
       from: "A&Z Fabrics Orders <orders@al-hallem.com>",
       to: ["digitaleyemedia25@gmail.com"],
@@ -108,12 +54,13 @@ const handler = async (req: Request): Promise<Response> => {
             <p><strong>Name:</strong> ${order.customer_name}</p>
             <p><strong>Email:</strong> ${order.customer_email}</p>
             <p><strong>Phone:</strong> ${order.customer_phone}</p>
-            <p><strong>Address:</strong> ${order.customer_address}, ${order.customer_city}</p>
+            <p><strong>Address:</strong> ${order.customer_address}${order.customer_city ? ', ' + order.customer_city : ''}</p>
           </div>
 
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="color: #333; margin-top: 0;">Order Details:</h3>
             <p><strong>Order Number:</strong> ${order.order_number}</p>
+            <p><strong>Order Date:</strong> ${new Date().toLocaleDateString()}</p>
             <p><strong>Total Amount:</strong> PKR ${order.total_amount.toLocaleString()}</p>
           </div>
 
@@ -145,6 +92,69 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Admin email sent:", adminEmailResponse);
+
+    // Send email to customer
+    const customerEmailResponse = await resend.emails.send({
+      from: "A&Z Fabrics <orders@al-hallem.com>",
+      to: [order.customer_email],
+      subject: `Order Confirmation - ${order.order_number}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #e11d48; font-size: 28px; margin: 0;">A&Z Fabrics</h1>
+            <p style="color: #666; margin: 5px 0;">Premium Fashion Collection</p>
+          </div>
+          
+          <h2 style="color: #333; border-bottom: 2px solid #e11d48; padding-bottom: 10px;">Thank you for your order!</h2>
+          <p>Dear ${order.customer_name},</p>
+          <p>We have received your order and it's being processed. You will receive another email once your order has been shipped.</p>
+          
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #333; margin-top: 0;">Order Details:</h3>
+            <p><strong>Order Number:</strong> ${order.order_number}</p>
+            <p><strong>Order Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p><strong>Total Amount:</strong> PKR ${order.total_amount.toLocaleString()}</p>
+            <p><strong>Delivery Address:</strong> ${order.customer_address}${order.customer_city ? ', ' + order.customer_city : ''}</p>
+          </div>
+
+          <h3 style="color: #333;">Items Ordered:</h3>
+          <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Product</th>
+                <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Quantity</th>
+                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${order.items.map(item => `
+                <tr>
+                  <td style="padding: 12px; border: 1px solid #ddd;">${item.product_name}</td>
+                  <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${item.quantity}</td>
+                  <td style="padding: 12px; text-align: right; border: 1px solid #ddd;">PKR ${(item.product_price * item.quantity).toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div style="background: #e8f5e8; border: 1px solid #c3e6c3; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; color: #2d5a2d;"><strong>✅ What's Next:</strong> We'll contact you soon to confirm your order details and provide tracking information.</p>
+          </div>
+
+          <div style="border-top: 2px solid #e11d48; padding-top: 20px; margin-top: 30px;">
+            <p>You can track your order status anytime by visiting our website and using your order number: <strong>${order.order_number}</strong></p>
+            <p>If you have any questions, please don't hesitate to contact us at +92 3090449955.</p>
+            <p style="margin-top: 30px;">Best regards,<br><strong>A&Z Fabrics Team</strong></p>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 12px;">📞 +92 3090449955 | ✉️ digitaleyemedia25@gmail.com | 🏪 Pakistan</p>
+          </div>
+        </div>
+      `,
+    });
+
+    console.log("Customer email sent:", customerEmailResponse);
 
     return new Response(JSON.stringify({ 
       success: true,

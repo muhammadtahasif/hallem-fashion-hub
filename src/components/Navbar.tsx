@@ -1,43 +1,34 @@
+
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { 
+import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
+  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetTrigger 
-} from "@/components/ui/sheet";
-import { 
-  Search, 
-  ShoppingCart, 
-  User, 
-  Menu, 
-  ChevronDown,
-  LogOut,
-  Package
-} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { supabase } from "@/integrations/supabase/client";
+import { 
+  Menu, 
+  X, 
+  User, 
+  ShoppingCart, 
+  LogOut, 
+  Package,
+  ChevronDown 
+} from "lucide-react";
 
 interface Category {
   id: string;
   name: string;
   slug: string;
+  subcategories?: Subcategory[];
 }
 
 interface Subcategory {
@@ -48,323 +39,331 @@ interface Subcategory {
 }
 
 const Navbar = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const { user, logout } = useAuth();
+  const { items } = useCart();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const { getTotalItems } = useCart();
+  const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    fetchCategoriesAndSubcategories();
+    fetchCategories();
     
-    // Set up real-time subscription for categories and subcategories
-    const channel = supabase
-      .channel('navbar-realtime')
+    // Set up real-time subscription for categories
+    const categoriesChannel = supabase
+      .channel('categories-navbar-realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'categories' },
         (payload) => {
-          console.log('Categories changed:', payload);
-          fetchCategoriesAndSubcategories();
+          console.log('Categories changed in navbar:', payload);
+          fetchCategories();
         }
       )
+      .subscribe();
+
+    // Set up real-time subscription for subcategories
+    const subcategoriesChannel = supabase
+      .channel('subcategories-navbar-realtime')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'subcategories' },
         (payload) => {
-          console.log('Subcategories changed:', payload);
-          fetchCategoriesAndSubcategories();
+          console.log('Subcategories changed in navbar:', payload);
+          fetchCategories();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(categoriesChannel);
+      supabase.removeChannel(subcategoriesChannel);
     };
   }, []);
 
-  const fetchCategoriesAndSubcategories = async () => {
+  const fetchCategories = async () => {
     try {
-      const [categoriesData, subcategoriesData] = await Promise.all([
-        supabase.from('categories').select('*').order('name'),
-        supabase.from('subcategories').select('*').order('name')
-      ]);
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
 
-      if (categoriesData.error) throw categoriesData.error;
-      if (subcategoriesData.error) throw subcategoriesData.error;
+      if (categoriesError) throw categoriesError;
 
-      console.log('Fetched categories:', categoriesData.data);
-      console.log('Fetched subcategories:', subcategoriesData.data);
-      
-      setCategories(categoriesData.data || []);
-      setSubcategories(subcategoriesData.data || []);
+      const { data: subcategoriesData, error: subcategoriesError } = await supabase
+        .from('subcategories')
+        .select('*')
+        .order('name');
+
+      if (subcategoriesError) throw subcategoriesError;
+
+      // Group subcategories by category
+      const categoriesWithSubs = (categoriesData || []).map(category => ({
+        ...category,
+        subcategories: (subcategoriesData || []).filter(sub => sub.category_id === category.id)
+      }));
+
+      setCategories(categoriesWithSubs);
     } catch (error) {
-      console.error('Error fetching categories and subcategories:', error);
+      console.error('Error fetching categories:', error);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery("");
-    }
-  };
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
   const handleCategoryClick = (categorySlug: string) => {
-    console.log('Category clicked:', categorySlug);
-    navigate(`/shop?category=${categorySlug}`);
+    const currentParams = new URLSearchParams(location.search);
+    currentParams.set('category', categorySlug);
+    currentParams.delete('subcategory'); // Clear subcategory when selecting main category
+    
+    // If we're already on shop page, just update the URL
+    if (location.pathname === '/shop') {
+      navigate(`/shop?${currentParams.toString()}`, { replace: true });
+    } else {
+      navigate(`/shop?${currentParams.toString()}`);
+    }
+    setIsMenuOpen(false);
   };
 
-  const handleSubcategoryClick = (subcategorySlug: string) => {
-    console.log('Subcategory clicked:', subcategorySlug);
-    navigate(`/shop?subcategory=${subcategorySlug}`);
-  };
-
-  const getCategorySubcategories = (categoryId: string) => {
-    return subcategories.filter(sub => sub.category_id === categoryId);
+  const handleSubcategoryClick = (categorySlug: string, subcategorySlug: string) => {
+    const currentParams = new URLSearchParams(location.search);
+    currentParams.set('category', categorySlug);
+    currentParams.set('subcategory', subcategorySlug);
+    
+    // If we're already on shop page, just update the URL
+    if (location.pathname === '/shop') {
+      navigate(`/shop?${currentParams.toString()}`, { replace: true });
+    } else {
+      navigate(`/shop?${currentParams.toString()}`);
+    }
+    setIsMenuOpen(false);
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+    <nav className="bg-white shadow-lg sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold font-serif text-rose-500">
-            A&Z Fabrics
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="text-2xl font-bold gradient-text font-serif">
+              A&Z Fabrics
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden lg:flex items-center space-x-8">
             <Link to="/" className="text-gray-700 hover:text-rose-500 transition-colors">
               Home
             </Link>
             
-            {/* Categories Navigation Menu */}
+            {/* Categories Dropdown */}
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="text-gray-700 hover:text-rose-500 transition-colors bg-transparent">
+                  <NavigationMenuTrigger className="text-gray-700 hover:text-rose-500 transition-colors">
                     Categories
                   </NavigationMenuTrigger>
-                  <NavigationMenuContent className="bg-white border shadow-lg p-4 min-w-[300px]">
-                    <div className="grid gap-2">
-                      <button
-                        onClick={() => handleCategoryClick('')}
-                        className="text-left px-3 py-2 hover:bg-gray-100 rounded-md font-medium"
-                      >
-                        All Products
-                      </button>
-                      {categories.map((category) => {
-                        const categorySubcategories = getCategorySubcategories(category.id);
-                        
-                        if (categorySubcategories.length > 0) {
-                          return (
-                            <div key={category.id} className="space-y-1">
-                              <button
-                                onClick={() => handleCategoryClick(category.slug)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md font-medium capitalize"
-                              >
-                                {category.name}
-                              </button>
-                              <div className="ml-4 space-y-1">
-                                {categorySubcategories.map((subcategory) => (
-                                  <button
-                                    key={subcategory.id}
-                                    onClick={() => handleSubcategoryClick(subcategory.slug)}
-                                    className="w-full text-left px-3 py-1 text-sm text-gray-600 hover:text-rose-500 hover:bg-gray-50 rounded-md capitalize"
-                                  >
-                                    {subcategory.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          return (
+                  <NavigationMenuContent>
+                    <div className="grid gap-3 p-6 w-[600px] grid-cols-2">
+                      {categories.map((category) => (
+                        <div key={category.id} className="space-y-2">
+                          <NavigationMenuLink asChild>
                             <button
-                              key={category.id}
                               onClick={() => handleCategoryClick(category.slug)}
-                              className="text-left px-3 py-2 hover:bg-gray-100 rounded-md capitalize"
+                              className="block w-full text-left p-2 hover:bg-gray-50 rounded-md transition-colors font-medium text-gray-900 capitalize"
                             >
                               {category.name}
                             </button>
-                          );
-                        }
-                      })}
+                          </NavigationMenuLink>
+                          {category.subcategories && category.subcategories.length > 0 && (
+                            <div className="ml-4 space-y-1">
+                              {category.subcategories.map((subcategory) => (
+                                <NavigationMenuLink key={subcategory.id} asChild>
+                                  <button
+                                    onClick={() => handleSubcategoryClick(category.slug, subcategory.slug)}
+                                    className="block w-full text-left p-1 hover:bg-gray-50 rounded-md transition-colors text-sm text-gray-600 capitalize"
+                                  >
+                                    {subcategory.name}
+                                  </button>
+                                </NavigationMenuLink>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
 
+            <Link to="/shop" className="text-gray-700 hover:text-rose-500 transition-colors">
+              Shop
+            </Link>
             <Link to="/contact" className="text-gray-700 hover:text-rose-500 transition-colors">
               Contact
             </Link>
           </div>
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex items-center max-w-md mx-4 flex-1">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4"
-              />
-            </div>
-          </form>
-
-          {/* Right Section */}
+          {/* Right side items */}
           <div className="flex items-center space-x-4">
-            {/* Order Tracking */}
-            <Link to="/track-order">
-              <Button variant="ghost" size="sm" className="relative">
-                <Package className="h-5 w-5" />
-              </Button>
+            {/* Order Tracking Icon */}
+            <Link to="/track-order" className="text-gray-700 hover:text-rose-500 transition-colors">
+              <Package className="h-5 w-5" />
             </Link>
 
             {/* Cart */}
-            <Link to="/cart" className="relative">
-              <Button variant="ghost" size="sm" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                {getTotalItems() > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-rose-500 text-white text-xs">
-                    {getTotalItems()}
-                  </Badge>
-                )}
-              </Button>
+            <Link to="/cart" className="relative text-gray-700 hover:text-rose-500 transition-colors">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-4 w-4 p-0 text-xs bg-rose-500">
+                  {totalItems}
+                </Badge>
+              )}
             </Link>
 
-            {/* User Menu */}
+            {/* User menu */}
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
-                  <DropdownMenuItem asChild>
-                    <Link to="/account" className="cursor-pointer">
-                      My Account
-                    </Link>
-                  </DropdownMenuItem>
-                  {user.email === 'digitaleyemedia25@gmail.com' && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer">
-                        Admin Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="hidden lg:flex items-center space-x-2">
+                <Link to="/account" className="text-gray-700 hover:text-rose-500 transition-colors">
+                  <User className="h-5 w-5" />
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="text-gray-700 hover:text-rose-500"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             ) : (
-              <div className="flex space-x-2">
+              <div className="hidden lg:flex items-center space-x-2">
                 <Link to="/login">
-                  <Button variant="ghost" size="sm">
-                    Sign In
-                  </Button>
+                  <Button variant="ghost" size="sm">Login</Button>
                 </Link>
                 <Link to="/signup">
-                  <Button size="sm" className="bg-rose-500 hover:bg-rose-600">
-                    Sign Up
-                  </Button>
+                  <Button size="sm" className="bg-rose-500 hover:bg-rose-600">Sign Up</Button>
                 </Link>
               </div>
             )}
 
-            {/* Mobile Menu */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="md:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-80">
-                <div className="flex flex-col space-y-4 mt-8">
-                  <form onSubmit={handleSearch} className="flex items-center">
-                    <div className="relative w-full">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 pr-4"
-                      />
-                    </div>
-                  </form>
-                  
-                  <Link to="/" onClick={() => setIsMobileMenuOpen(false)}>
-                    Home
-                  </Link>
-                  
-                  <div className="space-y-2">
-                    <p className="font-semibold">Categories</p>
-                    <button
-                      onClick={() => {
-                        handleCategoryClick('');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block pl-4 text-gray-600 text-left w-full"
-                    >
-                      All Products
-                    </button>
-                    {categories.map((category) => {
-                      const categorySubcategories = getCategorySubcategories(category.id);
-                      
-                      return (
-                        <div key={category.id} className="space-y-1">
-                          <button
-                            onClick={() => {
-                              handleCategoryClick(category.slug);
-                              setIsMobileMenuOpen(false);
-                            }}
-                            className="block pl-4 text-gray-600 capitalize text-left w-full font-medium"
-                          >
-                            {category.name}
-                          </button>
-                          {categorySubcategories.map((subcategory) => (
-                            <button
-                              key={subcategory.id}
-                              onClick={() => {
-                                handleSubcategoryClick(subcategory.slug);
-                                setIsMobileMenuOpen(false);
-                              }}
-                              className="block pl-8 text-gray-500 capitalize text-left w-full text-sm"
-                            >
-                              {subcategory.name}
-                            </button>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)}>
-                    Contact
-                  </Link>
-
-                  <Link to="/track-order" onClick={() => setIsMobileMenuOpen(false)}>
-                    Track Order
-                  </Link>
-                </div>
-              </SheetContent>
-            </Sheet>
+            {/* Mobile menu button */}
+            <button
+              className="lg:hidden"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="lg:hidden bg-white border-t">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <Link
+                to="/"
+                className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Home
+              </Link>
+              
+              {/* Mobile Categories */}
+              <div className="space-y-1">
+                <div className="px-3 py-2 text-gray-700 font-medium">Categories</div>
+                {categories.map((category) => (
+                  <div key={category.id} className="ml-4 space-y-1">
+                    <button
+                      onClick={() => handleCategoryClick(category.slug)}
+                      className="block w-full text-left px-3 py-2 text-gray-600 hover:text-rose-500 transition-colors capitalize"
+                    >
+                      {category.name}
+                    </button>
+                    {category.subcategories && category.subcategories.length > 0 && (
+                      <div className="ml-4 space-y-1">
+                        {category.subcategories.map((subcategory) => (
+                          <button
+                            key={subcategory.id}
+                            onClick={() => handleSubcategoryClick(category.slug, subcategory.slug)}
+                            className="block w-full text-left px-3 py-1 text-sm text-gray-500 hover:text-rose-500 transition-colors capitalize"
+                          >
+                            {subcategory.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <Link
+                to="/shop"
+                className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Shop
+              </Link>
+              <Link
+                to="/contact"
+                className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Contact
+              </Link>
+              <Link
+                to="/track-order"
+                className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Track Order
+              </Link>
+
+              {/* Mobile user menu */}
+              {user ? (
+                <>
+                  <Link
+                    to="/account"
+                    className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Account
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="block px-3 py-2 text-gray-700 hover:text-rose-500 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
