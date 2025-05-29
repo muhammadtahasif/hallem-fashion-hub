@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ interface Subcategory {
 }
 
 const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const { items } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -109,7 +110,7 @@ const Navbar = () => {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleLogout = async () => {
-    await signOut();
+    await logout();
     navigate('/');
   };
 
@@ -118,8 +119,12 @@ const Navbar = () => {
     currentParams.set('category', categorySlug);
     currentParams.delete('subcategory'); // Clear subcategory when selecting main category
     
-    // Navigate to shop page with the category filter
-    navigate(`/shop?${currentParams.toString()}`);
+    // If we're already on shop page, just update the URL
+    if (location.pathname === '/shop') {
+      navigate(`/shop?${currentParams.toString()}`, { replace: true });
+    } else {
+      navigate(`/shop?${currentParams.toString()}`);
+    }
     setIsMenuOpen(false);
   };
 
@@ -128,8 +133,12 @@ const Navbar = () => {
     currentParams.set('category', categorySlug);
     currentParams.set('subcategory', subcategorySlug);
     
-    // Navigate to shop page with the category and subcategory filters
-    navigate(`/shop?${currentParams.toString()}`);
+    // If we're already on shop page, just update the URL
+    if (location.pathname === '/shop') {
+      navigate(`/shop?${currentParams.toString()}`, { replace: true });
+    } else {
+      navigate(`/shop?${currentParams.toString()}`);
+    }
     setIsMenuOpen(false);
   };
 
