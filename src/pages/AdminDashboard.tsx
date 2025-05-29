@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -15,7 +14,7 @@ import ProductAddModal from "@/components/ProductAddModal";
 import CategoryManager from "@/components/CategoryManager";
 import SubcategoryManager from "@/components/SubcategoryManager";
 import ReportsSection from "@/components/ReportsSection";
-import { Eye, Trash2, MapPin, Phone, Mail, Package, Calendar, Edit, Settings } from "lucide-react";
+import { Eye, Trash2, MapPin, Phone, Mail, Package, Calendar, Edit } from "lucide-react";
 
 interface Order {
   id: string;
@@ -67,8 +66,6 @@ const AdminDashboard = () => {
   const [statusChangeOrder, setStatusChangeOrder] = useState<Order | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
-  const [shippingCharges, setShippingCharges] = useState(0);
-  const [isShippingDialogOpen, setIsShippingDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -77,41 +74,8 @@ const AdminDashboard = () => {
         return;
       }
       fetchDashboardData();
-      fetchShippingCharges();
     }
   }, [user, loading]);
-
-  const fetchShippingCharges = async () => {
-    try {
-      // For now, we'll store shipping charges in localStorage
-      // In a real app, you'd store this in the database
-      const stored = localStorage.getItem('shipping_charges');
-      if (stored) {
-        setShippingCharges(parseFloat(stored));
-      }
-    } catch (error) {
-      console.error('Error fetching shipping charges:', error);
-    }
-  };
-
-  const updateShippingCharges = async () => {
-    try {
-      localStorage.setItem('shipping_charges', shippingCharges.toString());
-      toast({
-        title: "Shipping charges updated",
-        description: "Shipping charges have been updated successfully.",
-        variant: "default"
-      });
-      setIsShippingDialogOpen(false);
-    } catch (error) {
-      console.error('Error updating shipping charges:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update shipping charges.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const fetchDashboardData = async () => {
     try {
@@ -231,24 +195,15 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) return;
+    if (!confirm('Are you sure you want to delete this order?')) return;
 
     try {
-      // First delete order items
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .delete()
-        .eq('order_id', orderId);
-
-      if (itemsError) throw itemsError;
-
-      // Then delete the order
-      const { error: orderError } = await supabase
+      const { error } = await supabase
         .from('orders')
         .delete()
         .eq('id', orderId);
 
-      if (orderError) throw orderError;
+      if (error) throw error;
 
       toast({
         title: "Order deleted",
@@ -256,7 +211,6 @@ const AdminDashboard = () => {
         variant: "default"
       });
 
-      // Refresh the orders list
       fetchDashboardData();
     } catch (error) {
       console.error('Error deleting order:', error);
@@ -301,22 +255,12 @@ const AdminDashboard = () => {
             <h1 className="text-3xl font-bold font-serif">Admin Dashboard</h1>
             <p className="text-gray-600">Welcome back, Administrator</p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setIsShippingDialogOpen(true)}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Shipping Charges
-            </Button>
-            <Button
-              onClick={() => navigate('/')}
-              variant="outline"
-            >
-              Back to Store
-            </Button>
-          </div>
+          <Button
+            onClick={() => navigate('/')}
+            variant="outline"
+          >
+            Back to Store
+          </Button>
         </div>
 
         {/* Main Content */}
@@ -432,15 +376,17 @@ const AdminDashboard = () => {
 
                           {/* Action Buttons */}
                           <div className="flex flex-col gap-2 lg:w-32">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleDeleteOrder(order.id)}
-                              className="text-red-600 hover:text-red-700 w-full"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
-                            </Button>
+                            {order.status === 'delivered' && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleDeleteOrder(order.id)}
+                                className="text-red-600 hover:text-red-700 w-full"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -547,7 +493,7 @@ const AdminDashboard = () => {
                     <label className="block text-sm font-medium mb-2">Store Name</label>
                     <input
                       type="text"
-                      defaultValue="A&Z Fabrics"
+                      defaultValue="AL - HALLEM"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                   </div>
@@ -566,10 +512,6 @@ const AdminDashboard = () => {
                       defaultValue="digitaleyemedia25@gmail.com"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Current Shipping Charges</label>
-                    <p className="text-lg font-semibold text-rose-500">PKR {shippingCharges.toLocaleString()}</p>
                   </div>
                   <Button className="w-full">Update Settings</Button>
                 </CardContent>
@@ -663,37 +605,6 @@ const AdminDashboard = () => {
               </Button>
               <Button variant="destructive" onClick={handleDeleteProduct}>
                 Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Shipping Charges Dialog */}
-        <Dialog open={isShippingDialogOpen} onOpenChange={setIsShippingDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Set Shipping Charges</DialogTitle>
-              <DialogDescription>
-                Set the shipping charges that will be applied to all orders.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Shipping Charges (PKR)</label>
-                <Input
-                  type="number"
-                  value={shippingCharges}
-                  onChange={(e) => setShippingCharges(parseFloat(e.target.value) || 0)}
-                  placeholder="Enter shipping charges"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsShippingDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={updateShippingCharges} className="bg-rose-500 hover:bg-rose-600">
-                Update Charges
               </Button>
             </DialogFooter>
           </DialogContent>

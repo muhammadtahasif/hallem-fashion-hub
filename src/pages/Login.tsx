@@ -34,7 +34,7 @@ const Login = () => {
 
       toast({
         title: "Login successful!",
-        description: "Welcome back to A&Z Fabrics.",
+        description: "Welcome back to AL - HALLEM.",
       });
 
       // Check if admin and redirect accordingly
@@ -66,7 +66,7 @@ const Login = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-serif">Welcome Back</CardTitle>
-          <p className="text-gray-600">Sign in to your A&Z Fabrics account</p>
+          <p className="text-gray-600">Sign in to your AL - HALLEM account</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

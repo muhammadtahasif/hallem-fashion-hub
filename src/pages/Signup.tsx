@@ -51,7 +51,7 @@ const Signup = () => {
 
       toast({
         title: "Account created successfully!",
-        description: "Welcome to A&Z Fabrics. You can now start shopping.",
+        description: "Welcome to AL - HALLEM. You can now start shopping.",
       });
 
       navigate('/shop');
@@ -78,7 +78,7 @@ const Signup = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-serif">Create Account</CardTitle>
-          <p className="text-gray-600">Join A&Z Fabrics and start shopping</p>
+          <p className="text-gray-600">Join AL - HALLEM and start shopping</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
