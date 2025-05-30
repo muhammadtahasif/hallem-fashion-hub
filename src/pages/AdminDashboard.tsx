@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useShipping } from "@/hooks/useShipping";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ProductEditModal from "@/components/ProductEditModal";
@@ -55,6 +56,7 @@ interface Product {
 const AdminDashboard = () => {
   const { toast } = useToast();
   const { user, loading } = useAuth();
+  const { shippingCharges, updateShippingCharges } = useShipping();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,7 +69,7 @@ const AdminDashboard = () => {
   const [statusChangeOrder, setStatusChangeOrder] = useState<Order | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
-  const [shippingCharges, setShippingCharges] = useState("0");
+  const [tempShippingCharges, setTempShippingCharges] = useState(shippingCharges.toString());
 
   useEffect(() => {
     if (!loading) {
@@ -76,24 +78,30 @@ const AdminDashboard = () => {
         return;
       }
       fetchDashboardData();
-      loadShippingCharges();
     }
   }, [user, loading]);
 
-  const loadShippingCharges = () => {
-    const savedCharges = localStorage.getItem('shippingCharges');
-    if (savedCharges) {
-      setShippingCharges(savedCharges);
-    }
-  };
+  useEffect(() => {
+    setTempShippingCharges(shippingCharges.toString());
+  }, [shippingCharges]);
 
-  const saveShippingCharges = () => {
-    localStorage.setItem('shippingCharges', shippingCharges);
-    toast({
-      title: "Shipping charges updated",
-      description: "Shipping charges have been saved successfully.",
-      variant: "default"
-    });
+  const saveShippingCharges = async () => {
+    const charges = parseFloat(tempShippingCharges) || 0;
+    const success = await updateShippingCharges(charges);
+    
+    if (success) {
+      toast({
+        title: "Shipping charges updated",
+        description: "Shipping charges have been saved successfully.",
+        variant: "default"
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to update shipping charges.",
+        variant: "destructive"
+      });
+    }
   };
 
   const fetchDashboardData = async () => {
@@ -552,13 +560,13 @@ const AdminDashboard = () => {
                       id="shippingCharges"
                       type="number"
                       min="0"
-                      value={shippingCharges}
-                      onChange={(e) => setShippingCharges(e.target.value)}
+                      value={tempShippingCharges}
+                      onChange={(e) => setTempShippingCharges(e.target.value)}
                       placeholder="Enter shipping charges"
                       className="w-full"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      This amount will be added to every order
+                      Enter 0 to make shipping free
                     </p>
                   </div>
                   <Button 

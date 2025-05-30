@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -25,16 +26,13 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
+      const { data, error } = await signIn(formData.email, formData.password);
 
       if (error) throw error;
 
       toast({
         title: "Login successful!",
-        description: "Welcome back to AL - HALLEM.",
+        description: "Welcome back to A&Z Fabrics.",
       });
 
       // Check if admin and redirect accordingly
@@ -66,7 +64,7 @@ const Login = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-serif">Welcome Back</CardTitle>
-          <p className="text-gray-600">Sign in to your AL - HALLEM account</p>
+          <p className="text-gray-600">Sign in to your A&Z Fabrics account</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

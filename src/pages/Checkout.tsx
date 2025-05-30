@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
+import { useShipping } from "@/hooks/useShipping";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const Checkout = () => {
   const { items, getTotalPrice, clearCart } = useCart();
+  const { shippingCharges } = useShipping();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -80,6 +82,9 @@ const Checkout = () => {
     }
   };
 
+  const subtotal = getTotalPrice();
+  const finalTotal = subtotal + shippingCharges;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -89,7 +94,7 @@ const Checkout = () => {
       await saveUserInfo();
 
       // Generate order number
-      const orderNumber = `ALH-${Date.now()}`;
+      const orderNumber = `AZ-${Date.now()}`;
 
       // Create order in database
       const { data: orderData, error: orderError } = await supabase
@@ -101,7 +106,7 @@ const Checkout = () => {
           customer_email: formData.email,
           customer_phone: formData.phone,
           customer_address: formData.address,
-          total_amount: getTotalPrice(),
+          total_amount: finalTotal,
           status: 'pending'
         }])
         .select()
@@ -141,7 +146,7 @@ const Checkout = () => {
             order_number: orderNumber,
             customer_name: formData.name,
             customer_phone: formData.phone,
-            total_amount: getTotalPrice()
+            total_amount: finalTotal
           }
         }
       });
@@ -281,7 +286,7 @@ const Checkout = () => {
                   className="w-full bg-rose-500 hover:bg-rose-600"
                   size="lg"
                 >
-                  {isLoading ? "Placing Order..." : `Place Order - PKR ${getTotalPrice().toLocaleString()}`}
+                  {isLoading ? "Placing Order..." : `Place Order - PKR ${finalTotal.toLocaleString()}`}
                 </Button>
               </form>
             </CardContent>
@@ -304,10 +309,20 @@ const Checkout = () => {
                     </p>
                   </div>
                 ))}
-                <div className="border-t pt-4">
-                  <div className="flex justify-between font-semibold text-lg">
-                    <span>Total</span>
-                    <span className="text-rose-500">PKR {getTotalPrice().toLocaleString()}</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>PKR {subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Shipping</span>
+                    <span>{shippingCharges === 0 ? 'Free' : `PKR ${shippingCharges.toLocaleString()}`}</span>
+                  </div>
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between font-semibold text-lg">
+                      <span>Total</span>
+                      <span className="text-rose-500">PKR {finalTotal.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
               </div>
