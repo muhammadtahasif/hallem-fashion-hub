@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,9 +7,11 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useShipping } from "@/hooks/useShipping";
 
 const Checkout = () => {
   const { items, getTotalPrice, clearCart } = useCart();
+  const { shippingCharges } = useShipping();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -92,6 +93,7 @@ const Checkout = () => {
       const orderNumber = `ALH-${Date.now()}`;
 
       // Create order in database
+      const totalWithShipping = getTotalPrice() + shippingCharges;
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -101,7 +103,7 @@ const Checkout = () => {
           customer_email: formData.email,
           customer_phone: formData.phone,
           customer_address: formData.address,
-          total_amount: getTotalPrice(),
+          total_amount: totalWithShipping,
           status: 'pending'
         }])
         .select()
@@ -304,10 +306,22 @@ const Checkout = () => {
                     </p>
                   </div>
                 ))}
-                <div className="border-t pt-4">
+                <div className="border-t pt-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>PKR {getTotalPrice().toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Shipping</span>
+                    <span>
+                      {shippingCharges > 0 ? `PKR ${shippingCharges.toLocaleString()}` : 'Free'}
+                    </span>
+                  </div>
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span className="text-rose-500">PKR {getTotalPrice().toLocaleString()}</span>
+                    <span className="text-rose-500">
+                      PKR {(getTotalPrice() + shippingCharges).toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </div>
