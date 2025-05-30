@@ -1,126 +1,142 @@
+
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { signIn } = useAuth();
   const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: ""
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  const redirectUrl = searchParams.get('redirect') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      await signIn({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) throw error;
+
       toast({
         title: "Login successful!",
-        description: "You are now logged in.",
+        description: "Welcome back to AL - HALLEM.",
       });
-      navigate("/account");
+
+      // Check if admin and redirect accordingly
+      if (formData.email === 'digitaleyemedia25@gmail.com') {
+        navigate('/admin');
+      } else {
+        navigate(redirectUrl);
+      }
     } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid credentials. Please try again.",
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome to A&Z Fabrics
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+    <div className="min-h-screen fashion-gradient flex items-center justify-center py-12 px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-serif">Welcome Back</CardTitle>
+          <p className="text-gray-600">Sign in to your AL - HALLEM account</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="sr-only">
-                Email address
-              </Label>
+              <label htmlFor="email" className="block text-sm font-medium mb-2">
+                Email Address
+              </label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                autoComplete="email"
+                value={formData.email}
+                onChange={handleChange}
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-rose-500 focus:border-rose-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your.email@example.com"
               />
             </div>
+
             <div>
-              <Label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-medium mb-2">
                 Password
-              </Label>
+              </label>
               <Input
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                value={formData.password}
+                onChange={handleChange}
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-rose-500 focus:border-rose-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Your password"
               />
             </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-rose-600 focus:ring-rose-500 border-gray-300 rounded"
-              />
-              <Label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center">
+                <input type="checkbox" className="mr-2" />
                 Remember me
-              </Label>
+              </label>
+              <a href="#" className="text-rose-500 hover:text-rose-600">
+                Forgot password?
+              </a>
             </div>
 
-            <div className="text-sm">
-              <Link to="/forgot-password" className="font-medium text-rose-600 hover:text-rose-500">
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
-
-          <div>
             <Button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-rose-500 hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
-              disabled={loading}
+              disabled={isLoading}
+              className="w-full bg-rose-500 hover:bg-rose-600 text-white"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
-          </div>
-        </form>
+          </form>
 
-        <p className="text-center text-sm text-gray-600">
-          Don't have an account?{" "}
-          <Link to="/signup" className="font-medium text-rose-600 hover:text-rose-500">
-            Sign up
-          </Link>
-        </p>
-      </div>
+          <Separator className="my-6" />
+
+          <div className="text-center space-y-4">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{" "}
+              <Link to="/signup" className="text-rose-500 hover:text-rose-600 font-medium">
+                Sign up
+              </Link>
+            </p>
+            <p className="text-sm text-gray-600">
+              Continue shopping as{" "}
+              <Link to="/shop" className="text-rose-500 hover:text-rose-600 font-medium">
+                Guest
+              </Link>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

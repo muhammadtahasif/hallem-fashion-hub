@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { addToCart, items } = useCart();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -87,21 +88,13 @@ const ProductDetail = () => {
     }
   };
 
-  const handleBuyNow = async () => {
+  const handleBuyNow = () => {
     if (!user) {
       navigate('/login');
       return;
     }
 
-    // Check if product is already in cart
-    const existingItem = items.find(item => item.product_id === product!.id);
-    
-    if (!existingItem) {
-      // Only add to cart if not already present
-      await addToCart(product!.id, quantity);
-    }
-    
-    // Navigate to checkout regardless
+    addToCart(product!.id, quantity);
     navigate('/checkout');
   };
 

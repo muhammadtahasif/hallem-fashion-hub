@@ -4,12 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { useShipping } from "@/hooks/useShipping";
 import { useNavigate, Link } from "react-router-dom";
 
 const Cart = () => {
   const { items, loading, removeFromCart, updateQuantity, getTotalPrice } = useCart();
-  const { shippingCharges } = useShipping();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
@@ -126,16 +124,12 @@ const Cart = () => {
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
-                    <span>
-                      {shippingCharges > 0 ? `PKR ${shippingCharges.toLocaleString()}` : 'Free'}
-                    </span>
+                    <span>Free</span>
                   </div>
                   <div className="border-t pt-2">
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total</span>
-                      <span className="text-rose-500">
-                        PKR {(getTotalPrice() + shippingCharges).toLocaleString()}
-                      </span>
+                      <span className="text-rose-500">PKR {getTotalPrice().toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

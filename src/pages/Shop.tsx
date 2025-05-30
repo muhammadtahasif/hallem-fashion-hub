@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -32,28 +33,19 @@ interface Category {
   slug: string;
 }
 
-interface Subcategory {
-  id: string;
-  name: string;
-  slug: string;
-}
-
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
 
   useEffect(() => {
     fetchCategories();
-    fetchSubcategories();
     // Set up real-time subscription for categories
     const channel = supabase
       .channel('shop-categories-changes')
@@ -80,11 +72,10 @@ const Shop = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('search', searchQuery);
     if (selectedCategory) params.set('category', selectedCategory);
-    if (selectedSubcategory) params.set('subcategory', selectedSubcategory);
     setSearchParams(params);
     
     fetchProducts();
-  }, [searchQuery, selectedCategory, selectedSubcategory, sortBy]);
+  }, [searchQuery, selectedCategory, sortBy]);
 
   const fetchCategories = async () => {
     try {
@@ -98,20 +89,6 @@ const Shop = () => {
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
-    }
-  };
-
-  const fetchSubcategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('subcategories')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setSubcategories(data || []);
-    } catch (error) {
-      console.error('Error fetching subcategories:', error);
     }
   };
 
@@ -131,8 +108,6 @@ const Shop = () => {
           image_url,
           stock,
           category_id,
-          subcategory_id,
-          sku,
           categories (
             name,
             slug
@@ -142,21 +117,14 @@ const Shop = () => {
       // Apply filters - filter by category if one is selected
       if (selectedCategory && selectedCategory !== '') {
         const category = categories.find(c => c.slug === selectedCategory);
+        console.log('Filtering by category:', selectedCategory, 'Found category:', category);
         if (category) {
           query = query.eq('category_id', category.id);
         }
       }
 
-      // Apply subcategory filter
-      if (selectedSubcategory && selectedSubcategory !== '') {
-        const subcategory = subcategories.find(s => s.slug === selectedSubcategory);
-        if (subcategory) {
-          query = query.eq('subcategory_id', subcategory.id);
-        }
-      }
-
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
+        query = query.ilike('name', `%${searchQuery}%`);
       }
 
       // Apply sorting
@@ -194,11 +162,6 @@ const Shop = () => {
     ...categories.map(cat => ({ value: cat.slug, label: cat.name }))
   ];
 
-  const subcategoryOptions = [
-    { value: '', label: 'All Subcategories' },
-    ...subcategories.map(sub => ({ value: sub.slug, label: sub.name }))
-  ];
-
   const calculateDiscount = (price: number, originalPrice?: number) => {
     if (!originalPrice || originalPrice <= price) return 0;
     return Math.round(((originalPrice - price) / originalPrice) * 100);
@@ -220,26 +183,6 @@ const Shop = () => {
               />
               <label htmlFor={category.value} className="text-sm capitalize">
                 {category.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="font-semibold mb-3">Subcategories</h3>
-        <div className="space-y-2">
-          {subcategoryOptions.map((subcategory) => (
-            <div key={subcategory.value} className="flex items-center space-x-2">
-              <Checkbox
-                id={`sub-${subcategory.value}`}
-                checked={selectedSubcategory === subcategory.value}
-                onCheckedChange={(checked) => {
-                  setSelectedSubcategory(checked ? subcategory.value : '');
-                }}
-              />
-              <label htmlFor={`sub-${subcategory.value}`} className="text-sm capitalize">
-                {subcategory.label}
               </label>
             </div>
           ))}
@@ -374,7 +317,6 @@ const Shop = () => {
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedCategory('');
-                    setSelectedSubcategory('');
                     setPriceRange([0, 10000]);
                   }}
                 >
