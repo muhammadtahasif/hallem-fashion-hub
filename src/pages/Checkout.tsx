@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useShipping } from "@/hooks/useShipping";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { CreditCard, Shield } from "lucide-react";
 
 const Checkout = () => {
   const { items, getTotalPrice, clearCart } = useCart();
@@ -96,7 +96,7 @@ const Checkout = () => {
       // Generate order number
       const orderNumber = `AZ-${Date.now()}`;
 
-      // Create order in database with correct total including shipping
+      // Create order in database
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -106,7 +106,7 @@ const Checkout = () => {
           customer_email: formData.email,
           customer_phone: formData.phone,
           customer_address: formData.address,
-          total_amount: finalTotal, // This now includes shipping charges
+          total_amount: finalTotal,
           status: 'pending'
         }])
         .select()
@@ -129,40 +129,35 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Send order notification email
-      const emailResponse = await supabase.functions.invoke('send-order-notification', {
+      // Create SAFEPAY payment session
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-safepay-payment', {
         body: {
-          order: {
-            ...orderData,
-            items: orderItems
-          }
+          orderId: orderData.id,
+          amount: finalTotal,
+          currency: 'PKR',
+          customerEmail: formData.email,
+          customerName: formData.name,
+          customerPhone: formData.phone,
+          description: `Order ${orderNumber} - ${items.length} items`
         }
       });
 
-      // Send SMS notification
-      const smsResponse = await supabase.functions.invoke('send-order-sms', {
-        body: {
-          order: {
-            order_number: orderNumber,
-            customer_name: formData.name,
-            customer_phone: formData.phone,
-            total_amount: finalTotal
-          }
-        }
-      });
+      if (paymentError) throw paymentError;
 
-      await clearCart();
+      if (paymentData?.success && paymentData?.checkout_url) {
+        // Clear cart before redirecting to payment
+        await clearCart();
+        
+        // Redirect to SAFEPAY checkout
+        window.location.href = paymentData.checkout_url;
+      } else {
+        throw new Error('Failed to create payment session');
+      }
 
-      toast({
-        title: "Order placed successfully!",
-        description: `Order number: ${orderNumber}. We'll contact you soon.`,
-      });
-
-      navigate('/track-order');
     } catch (error: any) {
       console.error('Checkout error:', error);
       toast({
-        title: "Order failed",
+        title: "Checkout failed",
         description: error.message || "Please try again.",
         variant: "destructive",
       });
@@ -194,17 +189,16 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold font-serif mb-8">Checkout</h1>
+        <h1 className="text-3xl font-bold font-serif mb-8">Secure Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card>
             <CardHeader>
               <CardTitle>Customer Details</CardTitle>
-              {!userInfo && user && (
-                <p className="text-sm text-gray-600">
-                  Please provide your details for delivery
-                </p>
-              )}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Shield className="w-4 h-4" />
+                <span>Secure payment powered by SAFEPAY</span>
+              </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -280,13 +274,24 @@ const Checkout = () => {
                   />
                 </div>
 
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="w-5 h-5 text-blue-600" />
+                    <span className="font-medium text-blue-900">Secure Payment</span>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    You'll be redirected to SAFEPAY's secure payment page to complete your purchase.
+                    We accept all major credit cards, debit cards, and digital wallets.
+                  </p>
+                </div>
+
                 <Button
                   type="submit"
                   disabled={isLoading}
                   className="w-full bg-rose-500 hover:bg-rose-600"
                   size="lg"
                 >
-                  {isLoading ? "Placing Order..." : `Place Order - PKR ${finalTotal.toLocaleString()}`}
+                  {isLoading ? "Processing..." : `Proceed to Payment - PKR ${finalTotal.toLocaleString()}`}
                 </Button>
               </form>
             </CardContent>
