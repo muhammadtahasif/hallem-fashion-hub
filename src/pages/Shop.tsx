@@ -134,6 +134,10 @@ const Shop = () => {
     setSelectedSubcategory("all"); // Reset subcategory when category changes
   };
 
+  const handleSubcategorySelect = (subcategoryId: string | null) => {
+    setSelectedSubcategory(subcategoryId || "all");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -166,9 +170,9 @@ const Shop = () => {
 
           {/* Subcategory Filter */}
           <SubcategoryFilter
-            selectedCategory={selectedCategory}
-            selectedSubcategory={selectedSubcategory}
-            onSubcategoryChange={setSelectedSubcategory}
+            selectedCategoryId={selectedCategory === "all" ? undefined : selectedCategory}
+            selectedSubcategoryId={selectedSubcategory === "all" ? undefined : selectedSubcategory}
+            onSubcategorySelect={handleSubcategorySelect}
           />
 
           {/* Sort Filter */}
