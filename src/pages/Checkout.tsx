@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -299,9 +299,20 @@ const Checkout = () => {
             <CardContent>
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center border-b pb-2">
+                  <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
+                    <Link to={`/product/${item.product_id}`}>
+                      <img
+                        src={item.product?.image_url}
+                        alt={item.product?.name}
+                        className="w-16 h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                      />
+                    </Link>
                     <div className="flex-1">
-                      <h4 className="font-medium">{item.product?.name}</h4>
+                      <Link to={`/product/${item.product_id}`}>
+                        <h4 className="font-medium hover:text-rose-500 transition-colors cursor-pointer">
+                          {item.product?.name}
+                        </h4>
+                      </Link>
                       <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
                     </div>
                     <p className="font-medium">

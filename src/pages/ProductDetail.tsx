@@ -12,6 +12,7 @@ import { useCart } from "@/hooks/useCart";
 import { supabase } from "@/integrations/supabase/client";
 import RelatedProducts from "@/components/RelatedProducts";
 import RandomProducts from "@/components/RandomProducts";
+import BuyNowButton from "@/components/BuyNowButton";
 
 interface Product {
   id: string;
@@ -86,16 +87,6 @@ const ProductDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleBuyNow = () => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    addToCart(product!.id, quantity);
-    navigate('/checkout');
   };
 
   const handleAddToCart = () => {
@@ -294,13 +285,10 @@ const ProductDetail = () => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              <Button
-                onClick={handleBuyNow}
-                disabled={product.stock === 0}
+              <BuyNowButton
+                productId={product.id}
                 className="w-full bg-rose-500 hover:bg-rose-600 text-white py-3 text-lg"
-              >
-                Buy Now
-              </Button>
+              />
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   onClick={handleAddToCart}

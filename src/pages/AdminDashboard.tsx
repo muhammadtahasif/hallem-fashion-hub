@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -222,15 +223,24 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm('Are you sure you want to delete this order?')) return;
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) return;
 
     try {
-      const { error } = await supabase
+      // First delete order items
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the order
+      const { error: orderError } = await supabase
         .from('orders')
         .delete()
         .eq('id', orderId);
 
-      if (error) throw error;
+      if (orderError) throw orderError;
 
       toast({
         title: "Order deleted",
@@ -403,17 +413,15 @@ const AdminDashboard = () => {
 
                           {/* Action Buttons */}
                           <div className="flex flex-col gap-2 lg:w-32">
-                            {order.status === 'delivered' && (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleDeleteOrder(order.id)}
-                                className="text-red-600 hover:text-red-700 w-full"
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
-                            )}
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDeleteOrder(order.id)}
+                              className="text-red-600 hover:text-red-700 w-full"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
                       </div>

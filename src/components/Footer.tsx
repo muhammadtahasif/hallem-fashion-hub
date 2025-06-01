@@ -27,9 +27,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm text-gray-300">
               <li><Link to="/" className="hover:text-rose-400 transition-colors">Home</Link></li>
               <li><Link to="/shop" className="hover:text-rose-400 transition-colors">Shop</Link></li>
-              <li><Link to="/shop?category=dupattas" className="hover:text-rose-400 transition-colors">Dupattas</Link></li>
-              <li><Link to="/shop?category=ready-made" className="hover:text-rose-400 transition-colors">Ready-Made</Link></li>
-              <li><Link to="/shop?category=unstitched" className="hover:text-rose-400 transition-colors">Unstitched</Link></li>
+              <li><Link to="/contact" className="hover:text-rose-400 transition-colors">Contact</Link></li>
             </ul>
           </div>
 
@@ -41,7 +39,6 @@ const Footer = () => {
               <li><Link to="/track-order" className="hover:text-rose-400 transition-colors">Track Order</Link></li>
               <li><a href="#" className="hover:text-rose-400 transition-colors">Shipping Info</a></li>
               <li><a href="#" className="hover:text-rose-400 transition-colors">Returns</a></li>
-              <li><a href="#" className="hover:text-rose-400 transition-colors">Size Guide</a></li>
             </ul>
           </div>
         </div>
