@@ -14,9 +14,12 @@ export const useShipping = () => {
         .eq('key', 'shipping_charges')
         .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 means no rows returned, which is fine for first time
+        throw error;
+      }
 
-      const charges = parseFloat(data.value) || 0;
+      const charges = data ? parseFloat(data.value) || 0 : 0;
       setShippingCharges(charges);
     } catch (error) {
       console.error('Error fetching shipping charges:', error);
@@ -34,6 +37,8 @@ export const useShipping = () => {
           key: 'shipping_charges', 
           value: charges.toString(),
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'key'
         });
 
       if (error) throw error;

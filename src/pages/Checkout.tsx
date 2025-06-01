@@ -96,7 +96,7 @@ const Checkout = () => {
       // Generate order number
       const orderNumber = `AZ-${Date.now()}`;
 
-      // Create order in database
+      // Create order in database with correct total including shipping
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -106,7 +106,7 @@ const Checkout = () => {
           customer_email: formData.email,
           customer_phone: formData.phone,
           customer_address: formData.address,
-          total_amount: finalTotal,
+          total_amount: finalTotal, // This now includes shipping charges
           status: 'pending'
         }])
         .select()
