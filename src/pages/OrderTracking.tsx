@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Package, Calendar, MapPin, Phone, Mail, Info } from "lucide-react";
+import { Package, Calendar, MapPin, Phone, Mail, Info, CreditCard, Truck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +18,8 @@ interface Order {
   customer_address: string;
   total_amount: number;
   status: string;
+  payment_method: string;
+  payment_status: string;
   created_at: string;
   order_items: Array<{
     product_name: string;
@@ -98,7 +100,20 @@ const OrderTracking = () => {
       case 'shipped': return 'bg-purple-500';
       case 'delivered': return 'bg-green-500';
       case 'cancelled': return 'bg-red-500';
+      case 'confirmed': return 'bg-green-600';
+      case 'payment_failed': return 'bg-red-600';
       default: return 'bg-gray-500';
+    }
+  };
+
+  const getPaymentStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -114,6 +129,10 @@ const OrderTracking = () => {
         return 'Your order has been delivered successfully.';
       case 'cancelled':
         return 'Your order has been cancelled.';
+      case 'confirmed':
+        return 'Your order has been confirmed and payment is verified.';
+      case 'payment_failed':
+        return 'Payment for your order has failed. Please contact support.';
       default:
         return 'Order status unknown.';
     }
@@ -226,6 +245,33 @@ const OrderTracking = () => {
                   </div>
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-700">{getStatusMessage(order.status)}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Payment Information */}
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Information
+                  </h3>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2">
+                      {order.payment_method === 'cod' ? (
+                        <Truck className="w-4 h-4 text-gray-600" />
+                      ) : (
+                        <CreditCard className="w-4 h-4 text-gray-600" />
+                      )}
+                      <span className="font-medium">
+                        {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+                      </span>
+                    </div>
+                    {order.payment_method === 'online' && (
+                      <Badge className={getPaymentStatusColor(order.payment_status)}>
+                        Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
 

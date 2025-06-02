@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, CreditCard, Truck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,6 +16,8 @@ interface Order {
   customer_address: string;
   total_amount: number;
   status: string;
+  payment_method: string;
+  payment_status: string;
   created_at: string;
   order_items: Array<{
     product_name: string;
@@ -92,6 +94,19 @@ const AdminOrdersTable = () => {
       case 'shipped': return 'bg-purple-100 text-purple-800';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'payment_failed': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -129,9 +144,33 @@ const AdminOrdersTable = () => {
                 </div>
               </div>
 
-              <div className="mb-3">
-                <p className="text-sm font-medium">Delivery Address:</p>
-                <p className="text-sm text-gray-600">{order.customer_address}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                <div>
+                  <p className="text-sm font-medium">Delivery Address:</p>
+                  <p className="text-sm text-gray-600">{order.customer_address}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Payment Details:
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {order.payment_method === 'cod' ? (
+                      <Truck className="w-4 h-4 text-gray-600" />
+                    ) : (
+                      <CreditCard className="w-4 h-4 text-gray-600" />
+                    )}
+                    <span className="text-sm">
+                      {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+                    </span>
+                  </div>
+                  {order.payment_method === 'online' && (
+                    <Badge className={getPaymentStatusColor(order.payment_status)} size="sm">
+                      Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               <div className="mb-3">

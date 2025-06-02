@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { useShipping } from "@/hooks/useShipping";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard, Shield } from "lucide-react";
+import PaymentMethodSelector from "@/components/PaymentMethodSelector";
 
 const Checkout = () => {
   const { items, getTotalPrice, clearCart } = useCart();
@@ -18,6 +20,7 @@ const Checkout = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online' | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: user?.email || "",
@@ -87,6 +90,16 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!paymentMethod) {
+      toast({
+        title: "Payment method required",
+        description: "Please select a payment method to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -107,7 +120,9 @@ const Checkout = () => {
           customer_phone: formData.phone,
           customer_address: formData.address,
           total_amount: finalTotal,
-          status: 'pending'
+          status: 'pending',
+          payment_method: paymentMethod,
+          payment_status: paymentMethod === 'cod' ? 'pending' : 'pending'
         }])
         .select()
         .single();
@@ -129,29 +144,38 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Create SAFEPAY payment session
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-safepay-payment', {
-        body: {
-          orderId: orderData.id,
-          amount: finalTotal,
-          currency: 'PKR',
-          customerEmail: formData.email,
-          customerName: formData.name,
-          customerPhone: formData.phone,
-          description: `Order ${orderNumber} - ${items.length} items`
-        }
-      });
-
-      if (paymentError) throw paymentError;
-
-      if (paymentData?.success && paymentData?.checkout_url) {
-        // Clear cart before redirecting to payment
+      if (paymentMethod === 'cod') {
+        // For COD, clear cart and redirect to success page
         await clearCart();
-        
-        // Redirect to SAFEPAY checkout
-        window.location.href = paymentData.checkout_url;
+        navigate(`/checkout/success?order_id=${orderData.id}`);
       } else {
-        throw new Error('Failed to create payment session');
+        // For online payment, create SAFEPAY payment session
+        const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-safepay-payment', {
+          body: {
+            orderId: orderData.id,
+            amount: finalTotal,
+            currency: 'PKR',
+            customerEmail: formData.email,
+            customerName: formData.name,
+            customerPhone: formData.phone,
+            description: `Order ${orderNumber} - ${items.length} items`
+          }
+        });
+
+        if (paymentError) {
+          console.error('Payment error:', paymentError);
+          throw new Error('Failed to create payment session');
+        }
+
+        if (paymentData?.success && paymentData?.checkout_url) {
+          // Clear cart before redirecting to payment
+          await clearCart();
+          
+          // Redirect to SAFEPAY checkout
+          window.location.href = paymentData.checkout_url;
+        } else {
+          throw new Error('Failed to create payment session');
+        }
       }
 
     } catch (error: any) {
@@ -192,110 +216,123 @@ const Checkout = () => {
         <h1 className="text-3xl font-bold font-serif mb-8">Secure Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Details</CardTitle>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Shield className="w-4 h-4" />
-                <span>Secure payment powered by SAFEPAY</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium mb-2">
-                    Full Name *
-                  </label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Your full name"
-                  />
-                </div>
+          <div className="space-y-6">
+            <PaymentMethodSelector 
+              onSelectMethod={setPaymentMethod}
+              selectedMethod={paymentMethod}
+            />
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium mb-2">
-                    Email Address *
-                  </label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    placeholder="your.email@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium mb-2">
-                    Phone Number *
-                  </label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    placeholder="+92 300 1234567"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium mb-2">
-                    Delivery Address *
-                  </label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    required
-                    placeholder="Complete address with house/flat number"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium mb-2">
-                    City *
-                  </label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    required
-                    placeholder="Your city"
-                  />
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium text-blue-900">Secure Payment</span>
+            <Card>
+              <CardHeader>
+                <CardTitle>Customer Details</CardTitle>
+                {paymentMethod === 'online' && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Shield className="w-4 h-4" />
+                    <span>Secure payment powered by SAFEPAY</span>
                   </div>
-                  <p className="text-sm text-blue-700">
-                    You'll be redirected to SAFEPAY's secure payment page to complete your purchase.
-                    We accept all major credit cards, debit cards, and digital wallets.
-                  </p>
-                </div>
+                )}
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium mb-2">
+                      Full Name *
+                    </label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Your full name"
+                    />
+                  </div>
 
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-rose-500 hover:bg-rose-600"
-                  size="lg"
-                >
-                  {isLoading ? "Processing..." : `Proceed to Payment - PKR ${finalTotal.toLocaleString()}`}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium mb-2">
+                      Email Address *
+                    </label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium mb-2">
+                      Phone Number *
+                    </label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      placeholder="+92 300 1234567"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="address" className="block text-sm font-medium mb-2">
+                      Delivery Address *
+                    </label>
+                    <Input
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      required
+                      placeholder="Complete address with house/flat number"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium mb-2">
+                      City *
+                    </label>
+                    <Input
+                      id="city"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      required
+                      placeholder="Your city"
+                    />
+                  </div>
+
+                  {paymentMethod === 'online' && (
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="w-5 h-5 text-blue-600" />
+                        <span className="font-medium text-blue-900">Secure Payment</span>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        You'll be redirected to SAFEPAY's secure payment page to complete your purchase.
+                        We accept all major credit cards, debit cards, and digital wallets.
+                      </p>
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={isLoading || !paymentMethod}
+                    className="w-full bg-rose-500 hover:bg-rose-600"
+                    size="lg"
+                  >
+                    {isLoading ? "Processing..." : 
+                     paymentMethod === 'cod' ? `Place Order - PKR ${finalTotal.toLocaleString()}` :
+                     `Proceed to Payment - PKR ${finalTotal.toLocaleString()}`}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
 
           <Card>
             <CardHeader>
