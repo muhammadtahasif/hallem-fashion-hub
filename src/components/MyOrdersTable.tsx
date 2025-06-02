@@ -181,7 +181,7 @@ const MyOrdersTable = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`/track-order?order=${order.order_number}&phone=${encodeURIComponent(order.customer_phone || '')}`, '_blank')}
+                onClick={() => window.open(`/track-order?order=${order.order_number}`, '_blank')}
               >
                 <Eye className="w-4 h-4 mr-2" />
                 Track Order

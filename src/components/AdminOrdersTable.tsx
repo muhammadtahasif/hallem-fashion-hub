@@ -166,7 +166,7 @@ const AdminOrdersTable = () => {
                     </span>
                   </div>
                   {order.payment_method === 'online' && (
-                    <Badge className={getPaymentStatusColor(order.payment_status)} size="sm">
+                    <Badge className={getPaymentStatusColor(order.payment_status)}>
                       Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
                     </Badge>
                   )}
