@@ -13,7 +13,16 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, amount, currency, customerEmail, customerName, customerPhone, description } = await req.json()
+    const { 
+      orderId, 
+      amount, 
+      currency, 
+      customerEmail, 
+      customerName, 
+      customerPhone, 
+      description,
+      paymentCredentials 
+    } = await req.json()
 
     if (!orderId || !amount) {
       throw new Error('Missing required parameters')
@@ -32,11 +41,13 @@ serve(async (req) => {
     const countryCode = phoneMatch ? phoneMatch[1] : '+92'
     const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\s/g, '') : customerPhone.replace(/\s/g, '')
 
+    console.log('Payment credentials received:', paymentCredentials)
+
     const paymentData = {
       intent: "CYBERSOURCE",
       mode: "payment",
       currency: currency,
-      amount: amount * 100, // Convert to paisa/cents
+      amount: Math.round(amount * 100), // Convert to paisa/cents and ensure it's an integer
       customer: {
         name: customerName,
         email: customerEmail,
@@ -50,11 +61,12 @@ serve(async (req) => {
       webhook_url: `https://jrnotkitoiiwikswpmdt.supabase.co/functions/v1/safepay-webhook`,
       metadata: {
         order_id: orderId,
-        description: description
+        description: description,
+        payment_credentials: paymentCredentials ? JSON.stringify(paymentCredentials) : null
       }
     }
 
-    console.log('Creating SAFEPAY payment with data:', paymentData)
+    console.log('Creating SAFEPAY payment with data:', JSON.stringify(paymentData, null, 2))
 
     // Create payment session with SAFEPAY
     const response = await fetch('https://sandbox.api.safepay.pk/checkout/create', {
@@ -68,19 +80,23 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('SAFEPAY API Error:', errorText)
+      console.error('SAFEPAY API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      })
       throw new Error(`SAFEPAY API Error: ${response.status} - ${errorText}`)
     }
 
     const responseData = await response.json()
-    console.log('SAFEPAY response:', responseData)
+    console.log('SAFEPAY response:', JSON.stringify(responseData, null, 2))
 
     if (responseData.data?.checkout_url) {
       return new Response(
         JSON.stringify({
           success: true,
           checkout_url: responseData.data.checkout_url,
-          session_token: responseData.data.session_uuid
+          session_token: responseData.data.session_uuid || responseData.data.token
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -88,7 +104,8 @@ serve(async (req) => {
         }
       )
     } else {
-      throw new Error('Invalid response from SAFEPAY')
+      console.error('Invalid SAFEPAY response structure:', responseData)
+      throw new Error('Invalid response from SAFEPAY - missing checkout URL')
     }
 
   } catch (error) {
