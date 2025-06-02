@@ -96,6 +96,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addToCart = async (productId: string, quantity = 1) => {
     try {
+      // Check if item already exists in cart first
+      const existingItem = items.find(item => item.product_id === productId);
+      
+      if (existingItem) {
+        // Update existing item quantity
+        await updateQuantity(existingItem.id, existingItem.quantity + quantity);
+        return;
+      }
+
+      // Add new item to cart
       const cartData: any = {
         product_id: productId,
         quantity,
@@ -107,24 +117,17 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         cartData.session_id = getSessionId();
       }
 
-      // Check if item already exists
-      const existingItem = items.find(item => item.product_id === productId);
-      
-      if (existingItem) {
-        await updateQuantity(existingItem.id, existingItem.quantity + quantity);
-      } else {
-        const { error } = await supabase
-          .from('cart_items')
-          .insert([cartData]);
+      const { error } = await supabase
+        .from('cart_items')
+        .insert([cartData]);
 
-        if (error) throw error;
-        
-        await fetchCartItems();
-        toast({
-          title: "Added to cart",
-          description: "Item has been added to your cart.",
-        });
-      }
+      if (error) throw error;
+      
+      await fetchCartItems();
+      toast({
+        title: "Added to cart",
+        description: "Item has been added to your cart.",
+      });
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({

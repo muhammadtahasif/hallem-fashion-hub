@@ -24,8 +24,10 @@ serve(async (req) => {
       paymentCredentials 
     } = await req.json()
 
+    console.log('Received payment request:', { orderId, amount, currency, customerEmail, customerName, customerPhone, description })
+
     if (!orderId || !amount) {
-      throw new Error('Missing required parameters')
+      throw new Error('Missing required parameters: orderId and amount')
     }
 
     // Get SAFEPAY credentials
@@ -37,20 +39,20 @@ serve(async (req) => {
     }
 
     // Parse phone number to extract country code and number
-    const phoneMatch = customerPhone.match(/^(\+\d{1,3})\s*(.+)/)
+    const phoneMatch = customerPhone?.match(/^(\+\d{1,3})\s*(.+)/)
     const countryCode = phoneMatch ? phoneMatch[1] : '+92'
-    const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\s/g, '') : customerPhone.replace(/\s/g, '')
+    const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\s/g, '') : customerPhone?.replace(/\s/g, '') || ''
 
     console.log('Payment credentials received:', paymentCredentials)
 
     const paymentData = {
       intent: "CYBERSOURCE",
       mode: "payment",
-      currency: currency,
+      currency: currency || "PKR",
       amount: Math.round(amount * 100), // Convert to paisa/cents and ensure it's an integer
       customer: {
-        name: customerName,
-        email: customerEmail,
+        name: customerName || "Customer",
+        email: customerEmail || "customer@example.com",
         phone: {
           country_code: countryCode,
           number: phoneNumber
@@ -61,7 +63,7 @@ serve(async (req) => {
       webhook_url: `https://jrnotkitoiiwikswpmdt.supabase.co/functions/v1/safepay-webhook`,
       metadata: {
         order_id: orderId,
-        description: description,
+        description: description || `Order ${orderId}`,
         payment_credentials: paymentCredentials ? JSON.stringify(paymentCredentials) : null
       }
     }
@@ -78,18 +80,27 @@ serve(async (req) => {
       body: JSON.stringify(paymentData)
     })
 
+    const responseText = await response.text()
+    console.log('SAFEPAY raw response:', responseText)
+
     if (!response.ok) {
-      const errorText = await response.text()
       console.error('SAFEPAY API Error Response:', {
         status: response.status,
         statusText: response.statusText,
-        body: errorText
+        body: responseText
       })
-      throw new Error(`SAFEPAY API Error: ${response.status} - ${errorText}`)
+      throw new Error(`SAFEPAY API Error: ${response.status} - ${responseText}`)
     }
 
-    const responseData = await response.json()
-    console.log('SAFEPAY response:', JSON.stringify(responseData, null, 2))
+    let responseData
+    try {
+      responseData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('Failed to parse SAFEPAY response:', parseError)
+      throw new Error('Invalid response format from SAFEPAY')
+    }
+
+    console.log('SAFEPAY parsed response:', JSON.stringify(responseData, null, 2))
 
     if (responseData.data?.checkout_url) {
       return new Response(

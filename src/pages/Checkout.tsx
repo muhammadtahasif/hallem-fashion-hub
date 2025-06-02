@@ -27,7 +27,10 @@ const Checkout = () => {
     email: user?.email || "",
     phone: "",
     address: "",
+    country: "Pakistan",
+    province: "",
     city: "",
+    postalCode: "",
   });
 
   useEffect(() => {
@@ -51,7 +54,10 @@ const Checkout = () => {
           email: user?.email || "",
           phone: data.phone || "",
           address: data.address || "",
+          country: "Pakistan",
+          province: "",
           city: data.city || "",
+          postalCode: "",
         });
       }
     } catch (error) {
@@ -128,49 +134,52 @@ const Checkout = () => {
       // Generate order number
       const orderNumber = `AZ-${Date.now()}`;
 
-      // Create order in database
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert([{
-          order_number: orderNumber,
-          user_id: user?.id || null,
-          customer_name: formData.name,
-          customer_email: formData.email,
-          customer_phone: formData.phone,
-          customer_address: formData.address,
-          total_amount: finalTotal,
-          status: 'pending',
-          payment_method: paymentMethod,
-          payment_status: paymentMethod === 'cod' ? 'pending' : 'pending'
-        }])
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
-        product_id: item.product_id,
-        product_name: item.product?.name || 'Unknown Product',
-        product_price: item.product?.price || 0,
-        quantity: item.quantity
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
+      // Complete customer address
+      const fullAddress = `${formData.address}, ${formData.city}, ${formData.province}, ${formData.country} - ${formData.postalCode}`;
 
       if (paymentMethod === 'cod') {
-        // For COD, clear cart and redirect to success page
+        // For COD, create order immediately
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .insert([{
+            order_number: orderNumber,
+            user_id: user?.id || null,
+            customer_name: formData.name,
+            customer_email: formData.email,
+            customer_phone: formData.phone,
+            customer_address: fullAddress,
+            total_amount: finalTotal,
+            status: 'pending',
+            payment_method: paymentMethod,
+            payment_status: 'pending'
+          }])
+          .select()
+          .single();
+
+        if (orderError) throw orderError;
+
+        // Create order items
+        const orderItems = items.map(item => ({
+          order_id: orderData.id,
+          product_id: item.product_id,
+          product_name: item.product?.name || 'Unknown Product',
+          product_price: item.product?.price || 0,
+          quantity: item.quantity
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+
+        if (itemsError) throw itemsError;
+
+        // Clear cart and redirect to success page
         await clearCart();
         navigate(`/checkout/success?order_id=${orderData.id}`);
       } else {
-        // For online payment, create SAFEPAY payment session with credentials
+        // For online payment, create SAFEPAY payment session first
         const paymentData = {
-          orderId: orderData.id,
+          orderId: orderNumber, // Use order number instead of order ID for now
           amount: finalTotal,
           currency: 'PKR',
           customerEmail: formData.email,
@@ -192,6 +201,41 @@ const Checkout = () => {
         }
 
         if (safepayResponse?.success && safepayResponse?.checkout_url) {
+          // Create order in pending status (will be updated after payment)
+          const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .insert([{
+              order_number: orderNumber,
+              user_id: user?.id || null,
+              customer_name: formData.name,
+              customer_email: formData.email,
+              customer_phone: formData.phone,
+              customer_address: fullAddress,
+              total_amount: finalTotal,
+              status: 'payment_pending',
+              payment_method: paymentMethod,
+              payment_status: 'pending'
+            }])
+            .select()
+            .single();
+
+          if (orderError) throw orderError;
+
+          // Create order items
+          const orderItems = items.map(item => ({
+            order_id: orderData.id,
+            product_id: item.product_id,
+            product_name: item.product?.name || 'Unknown Product',
+            product_price: item.product?.price || 0,
+            quantity: item.quantity
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems);
+
+          if (itemsError) throw itemsError;
+
           // Clear cart before redirecting to payment
           await clearCart();
           
@@ -310,7 +354,7 @@ const Checkout = () => {
 
                     <div>
                       <label htmlFor="address" className="block text-sm font-medium mb-2">
-                        Delivery Address *
+                        Street Address *
                       </label>
                       <Input
                         id="address"
@@ -318,22 +362,66 @@ const Checkout = () => {
                         value={formData.address}
                         onChange={handleChange}
                         required
-                        placeholder="Complete address with house/flat number"
+                        placeholder="House/flat number, street name"
                       />
                     </div>
 
-                    <div>
-                      <label htmlFor="city" className="block text-sm font-medium mb-2">
-                        City *
-                      </label>
-                      <Input
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                        required
-                        placeholder="Your city"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="country" className="block text-sm font-medium mb-2">
+                          Country *
+                        </label>
+                        <Input
+                          id="country"
+                          name="country"
+                          value={formData.country}
+                          onChange={handleChange}
+                          required
+                          placeholder="Country"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="province" className="block text-sm font-medium mb-2">
+                          Province *
+                        </label>
+                        <Input
+                          id="province"
+                          name="province"
+                          value={formData.province}
+                          onChange={handleChange}
+                          required
+                          placeholder="Province/State"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="city" className="block text-sm font-medium mb-2">
+                          City *
+                        </label>
+                        <Input
+                          id="city"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleChange}
+                          required
+                          placeholder="Your city"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="postalCode" className="block text-sm font-medium mb-2">
+                          Postal Code *
+                        </label>
+                        <Input
+                          id="postalCode"
+                          name="postalCode"
+                          value={formData.postalCode}
+                          onChange={handleChange}
+                          required
+                          placeholder="Postal/ZIP code"
+                        />
+                      </div>
                     </div>
 
                     {paymentMethod === 'online' && (

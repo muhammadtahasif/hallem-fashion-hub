@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +95,7 @@ const AdminOrdersTable = () => {
       case 'cancelled': return 'bg-red-100 text-red-800';
       case 'confirmed': return 'bg-green-100 text-green-800';
       case 'payment_failed': return 'bg-red-100 text-red-800';
+      case 'payment_pending': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -133,7 +133,7 @@ const AdminOrdersTable = () => {
                 </div>
                 <div className="text-right">
                   <Badge className={getStatusColor(order.status)}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
                   </Badge>
                   <p className="text-lg font-bold mt-1">
                     PKR {order.total_amount.toLocaleString()}
@@ -146,8 +146,10 @@ const AdminOrdersTable = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                 <div>
-                  <p className="text-sm font-medium">Delivery Address:</p>
-                  <p className="text-sm text-gray-600">{order.customer_address}</p>
+                  <p className="text-sm font-medium">Complete Delivery Address:</p>
+                  <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded mt-1">
+                    {order.customer_address}
+                  </p>
                 </div>
                 
                 <div>
@@ -165,11 +167,9 @@ const AdminOrdersTable = () => {
                       {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
                     </span>
                   </div>
-                  {order.payment_method === 'online' && (
-                    <Badge className={getPaymentStatusColor(order.payment_status)}>
-                      Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
-                    </Badge>
-                  )}
+                  <Badge className={getPaymentStatusColor(order.payment_status)}>
+                    Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
+                  </Badge>
                 </div>
               </div>
 
@@ -186,7 +186,6 @@ const AdminOrdersTable = () => {
 
               <div className="flex space-x-2">
                 <Button
-                  size="sm"
                   variant="outline"
                   onClick={() => updateOrderStatus(order.id, 'processing')}
                   disabled={order.status === 'processing'}
@@ -194,7 +193,6 @@ const AdminOrdersTable = () => {
                   Mark Processing
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
                   onClick={() => updateOrderStatus(order.id, 'shipped')}
                   disabled={order.status === 'shipped' || order.status === 'delivered'}
@@ -202,7 +200,6 @@ const AdminOrdersTable = () => {
                   Mark Shipped
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
                   onClick={() => updateOrderStatus(order.id, 'delivered')}
                   disabled={order.status === 'delivered'}

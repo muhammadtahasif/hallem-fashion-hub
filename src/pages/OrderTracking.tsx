@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,6 +101,7 @@ const OrderTracking = () => {
       case 'cancelled': return 'bg-red-500';
       case 'confirmed': return 'bg-green-600';
       case 'payment_failed': return 'bg-red-600';
+      case 'payment_pending': return 'bg-orange-500';
       default: return 'bg-gray-500';
     }
   };
@@ -133,6 +133,8 @@ const OrderTracking = () => {
         return 'Your order has been confirmed and payment is verified.';
       case 'payment_failed':
         return 'Payment for your order has failed. Please contact support.';
+      case 'payment_pending':
+        return 'Payment for your order is being processed.';
       default:
         return 'Order status unknown.';
     }
@@ -210,7 +212,7 @@ const OrderTracking = () => {
                 <CardTitle className="flex items-center justify-between">
                   <span>Order Details</span>
                   <Badge className={`${getStatusColor(order.status)} text-white capitalize`}>
-                    {order.status}
+                    {order.status.replace('_', ' ')}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -234,7 +236,7 @@ const OrderTracking = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Status:</span>
-                      <span className="font-medium capitalize">{order.status}</span>
+                      <span className="font-medium capitalize">{order.status.replace('_', ' ')}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Total Amount:</span>
@@ -267,17 +269,15 @@ const OrderTracking = () => {
                         {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
                       </span>
                     </div>
-                    {order.payment_method === 'online' && (
-                      <Badge className={getPaymentStatusColor(order.payment_status)}>
-                        Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
-                      </Badge>
-                    )}
+                    <Badge className={getPaymentStatusColor(order.payment_status)}>
+                      Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
+                    </Badge>
                   </div>
                 </div>
 
                 <Separator />
 
-                {/* Customer Info */}
+                {/* Customer Info with improved address display */}
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
@@ -297,8 +297,10 @@ const OrderTracking = () => {
                       <span>{order.customer_phone}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Address:</span>
-                      <p className="mt-1 text-sm">{order.customer_address}</p>
+                      <span className="text-gray-600">Complete Address:</span>
+                      <p className="mt-1 text-sm bg-white p-2 rounded border">
+                        {order.customer_address}
+                      </p>
                     </div>
                   </div>
                 </div>
