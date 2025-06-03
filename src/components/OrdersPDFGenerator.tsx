@@ -97,14 +97,14 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
     yPosition += 20;
   });
 
-  // Footer
+  // Footer - using getNumberOfPages with proper type casting
   pdf.setFontSize(10);
   pdf.setTextColor(60, 60, 60);
-  const pageCount = pdf.internal.getNumberOfPages();
+  const pageCount = (pdf as any).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
-    pdf.text(`A&Z Fabrics | Contact: +92 3090449955`, 20, pdf.internal.pageSize.height - 20);
-    pdf.text(`Page ${i} of ${pageCount}`, pdf.internal.pageSize.width - 40, pdf.internal.pageSize.height - 20);
+    pdf.text(`A&Z Fabrics | Contact: +92 3090449955`, 20, (pdf as any).internal.pageSize.height - 20);
+    pdf.text(`Page ${i} of ${pageCount}`, (pdf as any).internal.pageSize.width - 40, (pdf as any).internal.pageSize.height - 20);
   }
 
   // Download PDF
