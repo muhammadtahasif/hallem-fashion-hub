@@ -9,6 +9,7 @@ interface CartItem {
   product_id: string;
   quantity: number;
   product?: {
+    id: string;
     name: string;
     price: number;
     image_url: string;
@@ -19,6 +20,7 @@ interface CartItem {
 interface CartContextType {
   items: CartItem[];
   loading: boolean;
+  total: number;
   addToCart: (productId: string, quantity?: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
@@ -62,6 +64,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           product_id,
           quantity,
           products (
+            id,
             name,
             price,
             image_url,
@@ -201,9 +204,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }, 0);
   };
 
+  const total = getTotalPrice();
+
   const value = {
     items,
     loading,
+    total,
     addToCart,
     removeFromCart,
     updateQuantity,

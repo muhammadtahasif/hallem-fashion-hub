@@ -1,8 +1,25 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+interface ShippingContextType {
+  shippingCharges: number;
+  loading: boolean;
+  updateShippingCharges: (charges: number) => Promise<boolean>;
+  fetchShippingCharges: () => Promise<void>;
+}
+
+const ShippingContext = createContext<ShippingContextType | undefined>(undefined);
+
 export const useShipping = () => {
+  const context = useContext(ShippingContext);
+  if (context === undefined) {
+    throw new Error('useShipping must be used within a ShippingProvider');
+  }
+  return context;
+};
+
+export const ShippingProvider = ({ children }: { children: React.ReactNode }) => {
   const [shippingCharges, setShippingCharges] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
@@ -55,10 +72,12 @@ export const useShipping = () => {
     fetchShippingCharges();
   }, []);
 
-  return {
+  const value = {
     shippingCharges,
     loading,
     updateShippingCharges,
     fetchShippingCharges
   };
+
+  return <ShippingContext.Provider value={value}>{children}</ShippingContext.Provider>;
 };
