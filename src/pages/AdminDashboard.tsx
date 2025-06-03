@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import ProductAddModal from "@/components/ProductAddModal";
 import CategoryManager from "@/components/CategoryManager";
 import SubcategoryManager from "@/components/SubcategoryManager";
 import ReportsSection from "@/components/ReportsSection";
+import AdminOrdersTable from "@/components/AdminOrdersTable";
 import { Eye, Trash2, MapPin, Phone, Mail, Package, Calendar, Edit, Truck } from "lucide-react";
 
 interface Order {
@@ -312,124 +312,12 @@ const AdminDashboard = () => {
 
           {/* Reports Tab */}
           <TabsContent value="reports">
-            <ReportsSection />
+            <AdminOrdersTable />
           </TabsContent>
 
           {/* Orders Tab */}
           <TabsContent value="orders">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {orders.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">No orders found</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {orders.map((order) => (
-                      <div key={order.id} className="border rounded-lg p-4 lg:p-6 bg-white shadow-sm">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                          <div className="flex-1 space-y-3">
-                            {/* Order Header */}
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                              <div>
-                                <p className="font-bold text-lg">{order.order_number}</p>
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                  <Calendar className="h-4 w-4" />
-                                  {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString()}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge className={`${getStatusColor(order.status)} text-white capitalize`}>
-                                  {order.status}
-                                </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setStatusChangeOrder(order);
-                                    setNewStatus(order.status);
-                                    setIsStatusDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-3 w-3 mr-1" />
-                                  Change
-                                </Button>
-                              </div>
-                            </div>
-
-                            {/* Customer Information */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                              <div>
-                                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                                  <Package className="h-4 w-4" />
-                                  Customer Details
-                                </h4>
-                                <div className="space-y-1 text-sm">
-                                  <p className="font-medium">{order.customer_name}</p>
-                                  <div className="flex items-center gap-1 text-gray-600">
-                                    <Mail className="h-3 w-3" />
-                                    {order.customer_email}
-                                  </div>
-                                  <div className="flex items-center gap-1 text-gray-600">
-                                    <Phone className="h-3 w-3" />
-                                    {order.customer_phone}
-                                  </div>
-                                </div>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                                  <MapPin className="h-4 w-4" />
-                                  Shipping Address
-                                </h4>
-                                <p className="text-sm text-gray-600 leading-relaxed">{order.customer_address}</p>
-                              </div>
-                            </div>
-
-                            {/* Order Items with SKU */}
-                            <div className="space-y-2">
-                              <h4 className="font-semibold text-sm">Order Items:</h4>
-                              <div className="space-y-1">
-                                {order.order_items.map((item, index) => (
-                                  <div key={index} className="flex justify-between items-center text-sm p-2 bg-white rounded border">
-                                    <div>
-                                      <span>{item.product_name} × {item.quantity}</span>
-                                      {item.products?.sku && (
-                                        <div className="text-xs text-gray-500">SKU: {item.products.sku}</div>
-                                      )}
-                                    </div>
-                                    <span className="font-medium">PKR {(item.product_price * item.quantity).toLocaleString()}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              <div className="flex justify-between items-center font-bold text-lg pt-2 border-t">
-                                <span>Total Amount:</span>
-                                <span className="text-rose-500">PKR {order.total_amount.toLocaleString()}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex flex-col gap-2 lg:w-32">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleDeleteOrder(order.id)}
-                              className="text-red-600 hover:text-red-700 w-full"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <AdminOrdersTable />
           </TabsContent>
 
           {/* Products Tab */}
