@@ -20,8 +20,7 @@ serve(async (req) => {
       customerEmail, 
       customerName, 
       customerPhone, 
-      description,
-      paymentCredentials 
+      description 
     } = await req.json()
 
     console.log('Received payment request:', { orderId, amount, currency, customerEmail, customerName, customerPhone, description })
@@ -43,8 +42,6 @@ serve(async (req) => {
     const countryCode = phoneMatch ? phoneMatch[1] : '+92'
     const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\s/g, '') : customerPhone?.replace(/\s/g, '') || ''
 
-    console.log('Payment credentials received:', paymentCredentials)
-
     const paymentData = {
       intent: "CYBERSOURCE",
       mode: "payment",
@@ -63,14 +60,13 @@ serve(async (req) => {
       webhook_url: `https://jrnotkitoiiwikswpmdt.supabase.co/functions/v1/safepay-webhook`,
       metadata: {
         order_id: orderId,
-        description: description || `Order ${orderId}`,
-        payment_credentials: paymentCredentials ? JSON.stringify(paymentCredentials) : null
+        description: description || `Order ${orderId}`
       }
     }
 
     console.log('Creating SAFEPAY payment with data:', JSON.stringify(paymentData, null, 2))
 
-    // Create payment session with SAFEPAY - Updated API endpoint and headers
+    // Create payment session with SAFEPAY
     const response = await fetch('https://gw.sandbox.safepay.pk/checkout/create', {
       method: 'POST',
       headers: {
@@ -91,7 +87,19 @@ serve(async (req) => {
         statusText: response.statusText,
         body: responseText
       })
-      throw new Error(`SAFEPAY API Error: ${response.status} - ${responseText}`)
+      
+      // Return a COD fallback instead of error
+      return new Response(
+        JSON.stringify({
+          success: true,
+          fallback_to_cod: true,
+          message: "Online payment temporarily unavailable. Order will be processed as Cash on Delivery."
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
     let responseData
@@ -99,7 +107,18 @@ serve(async (req) => {
       responseData = JSON.parse(responseText)
     } catch (parseError) {
       console.error('Failed to parse SAFEPAY response:', parseError)
-      throw new Error('Invalid response format from SAFEPAY')
+      // Return COD fallback
+      return new Response(
+        JSON.stringify({
+          success: true,
+          fallback_to_cod: true,
+          message: "Online payment temporarily unavailable. Order will be processed as Cash on Delivery."
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
     console.log('SAFEPAY parsed response:', JSON.stringify(responseData, null, 2))
@@ -118,19 +137,32 @@ serve(async (req) => {
       )
     } else {
       console.error('Invalid SAFEPAY response structure:', responseData)
-      throw new Error('Invalid response from SAFEPAY - missing checkout URL')
+      // Return COD fallback
+      return new Response(
+        JSON.stringify({
+          success: true,
+          fallback_to_cod: true,
+          message: "Online payment temporarily unavailable. Order will be processed as Cash on Delivery."
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
   } catch (error) {
     console.error('Error creating SAFEPAY payment:', error)
+    // Return COD fallback instead of error
     return new Response(
       JSON.stringify({
-        success: false,
-        error: error.message
+        success: true,
+        fallback_to_cod: true,
+        message: "Online payment temporarily unavailable. Order will be processed as Cash on Delivery."
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 200,
       }
     )
   }

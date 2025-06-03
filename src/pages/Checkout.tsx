@@ -122,13 +122,64 @@ const Checkout = () => {
             customerEmail: customerInfo.email,
             customerName: customerInfo.name,
             customerPhone: customerInfo.phone,
-            description: `Order ${orderNumber}`,
-            paymentCredentials
+            description: `Order ${orderNumber}`
           }
         });
 
-        if (paymentError || !paymentData?.success) {
-          throw new Error(paymentData?.error || 'Failed to create payment session');
+        if (paymentError) {
+          throw new Error('Payment service unavailable. Please try Cash on Delivery.');
+        }
+
+        if (paymentData?.fallback_to_cod) {
+          // Handle fallback to COD
+          toast({
+            title: "Payment Method Changed",
+            description: paymentData.message,
+            variant: "default",
+          });
+          
+          // Process as COD
+          const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+              order_number: orderNumber,
+              user_id: user?.id || null,
+              customer_name: customerInfo.name,
+              customer_email: customerInfo.email,
+              customer_phone: customerInfo.phone,
+              customer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.province}, ${customerInfo.country}, ${customerInfo.postalCode}`,
+              total_amount: totalWithShipping,
+              payment_method: 'cod',
+              payment_status: 'pending',
+              status: 'pending'
+            })
+            .select()
+            .single();
+
+          if (orderError) throw orderError;
+
+          // Create order items
+          const orderItems = items.map(item => ({
+            order_id: order.id,
+            product_id: item.product.id,
+            product_name: item.product.name,
+            quantity: item.quantity,
+            product_price: item.product.price
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems);
+
+          if (itemsError) throw itemsError;
+
+          clearCart();
+          navigate(`/order-placed?order_number=${orderNumber}`);
+          return;
+        }
+
+        if (!paymentData?.success || !paymentData?.checkout_url) {
+          throw new Error('Failed to create payment session');
         }
 
         // Redirect to SAFEPAY for payment
