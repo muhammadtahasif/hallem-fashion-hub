@@ -82,6 +82,8 @@ serve(async (req) => {
 
     const responseText = await response.text()
     console.log('SAFEPAY raw response:', responseText)
+    console.log('SAFEPAY response status:', response.status)
+    console.log('SAFEPAY response headers:', Object.fromEntries(response.headers.entries()))
 
     if (!response.ok) {
       console.error('SAFEPAY API Error Response:', {

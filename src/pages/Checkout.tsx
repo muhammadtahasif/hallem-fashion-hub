@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ const Checkout = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online' | null>(null);
-  const [showPaymentCredentials, setShowPaymentCredentials] = useState(false);
+  const [customerDetailsSubmitted, setCustomerDetailsSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: user?.email || "",
@@ -97,26 +98,27 @@ const Checkout = () => {
 
   const handlePaymentMethodSelect = (method: 'cod' | 'online') => {
     setPaymentMethod(method);
-    setShowPaymentCredentials(method === 'online');
   };
 
   const handleCustomerDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!paymentMethod) {
+    // Validate required fields
+    if (!formData.name || !formData.email || !formData.phone || !formData.address || 
+        !formData.country || !formData.province || !formData.city || !formData.postalCode) {
       toast({
-        title: "Payment method required",
-        description: "Please select a payment method to continue.",
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
     }
 
-    if (paymentMethod === 'cod') {
-      await processOrder();
-    } else {
-      setShowPaymentCredentials(true);
-    }
+    setCustomerDetailsSubmitted(true);
+    toast({
+      title: "Details Saved",
+      description: "Now please select a payment method to proceed.",
+    });
   };
 
   const handlePaymentCredentialsSubmit = async (credentials: PaymentCredentials) => {
@@ -132,7 +134,7 @@ const Checkout = () => {
       await saveUserInfo();
 
       // Generate order number
-      const orderNumber = `AZ-${Date.now()}`;
+      const orderNumber = `HFH-${Date.now()}`;
 
       // Complete customer address
       const fullAddress = `${formData.address}, ${formData.city}, ${formData.province}, ${formData.country} - ${formData.postalCode}`;
@@ -179,7 +181,7 @@ const Checkout = () => {
       } else {
         // For online payment, create SAFEPAY payment session first
         const paymentData = {
-          orderId: orderNumber, // Use order number instead of order ID for now
+          orderId: orderNumber,
           amount: finalTotal,
           currency: 'PKR',
           customerEmail: formData.email,
@@ -195,9 +197,11 @@ const Checkout = () => {
           body: paymentData
         });
 
+        console.log('SAFEPAY Response:', safepayResponse);
+
         if (paymentError) {
           console.error('Payment error:', paymentError);
-          throw new Error('Failed to create payment session');
+          throw new Error(`Payment session failed: ${paymentError.message}`);
         }
 
         if (safepayResponse?.success && safepayResponse?.checkout_url) {
@@ -285,174 +289,195 @@ const Checkout = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <PaymentMethodSelector 
-              onSelectMethod={handlePaymentMethodSelect}
-              selectedMethod={paymentMethod}
-            />
+            {/* Customer Details Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Customer Details (Required)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCustomerDetailsSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium mb-2">
+                      Full Name *
+                    </label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Your full name"
+                      disabled={customerDetailsSubmitted}
+                    />
+                  </div>
 
-            {paymentMethod === 'online' && showPaymentCredentials ? (
-              <PaymentCredentialsForm 
-                onSubmit={handlePaymentCredentialsSubmit}
-                isLoading={isLoading}
-              />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Details</CardTitle>
-                  {paymentMethod === 'online' && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Shield className="w-4 h-4" />
-                      <span>Secure payment powered by SAFEPAY</span>
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleCustomerDetailsSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium mb-2">
+                      Email Address *
+                    </label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      placeholder="your.email@example.com"
+                      disabled={customerDetailsSubmitted}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium mb-2">
+                      Phone Number *
+                    </label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      placeholder="+92 300 1234567"
+                      disabled={customerDetailsSubmitted}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="address" className="block text-sm font-medium mb-2">
+                      Street Address *
+                    </label>
+                    <Input
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      required
+                      placeholder="House/flat number, street name"
+                      disabled={customerDetailsSubmitted}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium mb-2">
-                        Full Name *
+                      <label htmlFor="country" className="block text-sm font-medium mb-2">
+                        Country *
                       </label>
                       <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
+                        id="country"
+                        name="country"
+                        value={formData.country}
                         onChange={handleChange}
                         required
-                        placeholder="Your full name"
+                        placeholder="Country"
+                        disabled={customerDetailsSubmitted}
                       />
                     </div>
-
                     <div>
-                      <label htmlFor="email" className="block text-sm font-medium mb-2">
-                        Email Address *
+                      <label htmlFor="province" className="block text-sm font-medium mb-2">
+                        Province *
                       </label>
                       <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
+                        id="province"
+                        name="province"
+                        value={formData.province}
                         onChange={handleChange}
                         required
-                        placeholder="your.email@example.com"
+                        placeholder="Province/State"
+                        disabled={customerDetailsSubmitted}
                       />
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="phone" className="block text-sm font-medium mb-2">
-                        Phone Number *
+                      <label htmlFor="city" className="block text-sm font-medium mb-2">
+                        City *
                       </label>
                       <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        value={formData.phone}
+                        id="city"
+                        name="city"
+                        value={formData.city}
                         onChange={handleChange}
                         required
-                        placeholder="+92 300 1234567"
+                        placeholder="Your city"
+                        disabled={customerDetailsSubmitted}
                       />
                     </div>
-
                     <div>
-                      <label htmlFor="address" className="block text-sm font-medium mb-2">
-                        Street Address *
+                      <label htmlFor="postalCode" className="block text-sm font-medium mb-2">
+                        Postal Code *
                       </label>
                       <Input
-                        id="address"
-                        name="address"
-                        value={formData.address}
+                        id="postalCode"
+                        name="postalCode"
+                        value={formData.postalCode}
                         onChange={handleChange}
                         required
-                        placeholder="House/flat number, street name"
+                        placeholder="Postal/ZIP code"
+                        disabled={customerDetailsSubmitted}
                       />
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="country" className="block text-sm font-medium mb-2">
-                          Country *
-                        </label>
-                        <Input
-                          id="country"
-                          name="country"
-                          value={formData.country}
-                          onChange={handleChange}
-                          required
-                          placeholder="Country"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="province" className="block text-sm font-medium mb-2">
-                          Province *
-                        </label>
-                        <Input
-                          id="province"
-                          name="province"
-                          value={formData.province}
-                          onChange={handleChange}
-                          required
-                          placeholder="Province/State"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="city" className="block text-sm font-medium mb-2">
-                          City *
-                        </label>
-                        <Input
-                          id="city"
-                          name="city"
-                          value={formData.city}
-                          onChange={handleChange}
-                          required
-                          placeholder="Your city"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="postalCode" className="block text-sm font-medium mb-2">
-                          Postal Code *
-                        </label>
-                        <Input
-                          id="postalCode"
-                          name="postalCode"
-                          value={formData.postalCode}
-                          onChange={handleChange}
-                          required
-                          placeholder="Postal/ZIP code"
-                        />
-                      </div>
-                    </div>
-
-                    {paymentMethod === 'online' && (
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CreditCard className="w-5 h-5 text-blue-600" />
-                          <span className="font-medium text-blue-900">Secure Payment</span>
-                        </div>
-                        <p className="text-sm text-blue-700">
-                          You'll be redirected to SAFEPAY's secure payment page to complete your purchase.
-                          We accept all major credit cards, debit cards, and digital wallets.
-                        </p>
-                      </div>
-                    )}
-
+                  {!customerDetailsSubmitted && (
                     <Button
                       type="submit"
-                      disabled={isLoading || !paymentMethod}
                       className="w-full bg-rose-500 hover:bg-rose-600"
                       size="lg"
                     >
-                      {isLoading ? "Processing..." : 
-                       paymentMethod === 'cod' ? `Place Order - PKR ${finalTotal.toLocaleString()}` :
-                       `Continue to Payment Details`}
+                      Save Details & Continue
                     </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Payment Method Selection - Only shown after customer details */}
+            {customerDetailsSubmitted && (
+              <>
+                <PaymentMethodSelector 
+                  onSelectMethod={handlePaymentMethodSelect}
+                  selectedMethod={paymentMethod}
+                />
+
+                {/* Payment Credentials Form - Only for online payments */}
+                {paymentMethod === 'online' && (
+                  <PaymentCredentialsForm 
+                    onSubmit={handlePaymentCredentialsSubmit}
+                    isLoading={isLoading}
+                  />
+                )}
+
+                {/* COD Confirmation */}
+                {paymentMethod === 'cod' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Confirm Order</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-yellow-50 p-4 rounded-lg mb-4">
+                        <p className="text-yellow-800 font-medium">Cash on Delivery Selected</p>
+                        <p className="text-sm text-yellow-700">
+                          You will pay PKR {finalTotal.toLocaleString()} when your order is delivered.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => processOrder()}
+                        disabled={isLoading}
+                        className="w-full bg-rose-500 hover:bg-rose-600"
+                        size="lg"
+                      >
+                        {isLoading ? "Processing..." : `Confirm Order - PKR ${finalTotal.toLocaleString()}`}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
           </div>
 
+          {/* Order Summary */}
           <Card>
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
