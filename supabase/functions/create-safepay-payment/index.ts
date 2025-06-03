@@ -49,7 +49,7 @@ serve(async (req) => {
       intent: "CYBERSOURCE",
       mode: "payment",
       currency: currency || "PKR",
-      amount: Math.round(amount * 100), // Convert to paisa/cents and ensure it's an integer
+      amount: Math.round(amount * 100), // Convert to paisa/cents
       customer: {
         name: customerName || "Customer",
         email: customerEmail || "customer@example.com",
@@ -70,12 +70,13 @@ serve(async (req) => {
 
     console.log('Creating SAFEPAY payment with data:', JSON.stringify(paymentData, null, 2))
 
-    // Create payment session with SAFEPAY
-    const response = await fetch('https://sandbox.api.safepay.pk/checkout/create', {
+    // Create payment session with SAFEPAY - Updated API endpoint and headers
+    const response = await fetch('https://gw.sandbox.safepay.pk/checkout/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-SFPY-MERCHANT-SECRET': secretKey,
+        'Accept': 'application/json'
       },
       body: JSON.stringify(paymentData)
     })
@@ -83,7 +84,6 @@ serve(async (req) => {
     const responseText = await response.text()
     console.log('SAFEPAY raw response:', responseText)
     console.log('SAFEPAY response status:', response.status)
-    console.log('SAFEPAY response headers:', Object.fromEntries(response.headers.entries()))
 
     if (!response.ok) {
       console.error('SAFEPAY API Error Response:', {

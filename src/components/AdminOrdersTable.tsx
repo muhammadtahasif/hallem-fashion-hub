@@ -1,10 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, CreditCard, Truck } from "lucide-react";
+import { Eye, CreditCard, Truck, FileDown, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import OrdersPDFGenerator from "./OrdersPDFGenerator";
+import BulkStatusUpdater from "./BulkStatusUpdater";
 
 interface Order {
   id: string;
@@ -28,6 +31,7 @@ interface Order {
 const AdminOrdersTable = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showBulkUpdater, setShowBulkUpdater] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -116,108 +120,143 @@ const AdminOrdersTable = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Orders</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div key={order.id} className="border rounded-lg p-4">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-semibold">{order.order_number}</h3>
-                  <p className="text-sm text-gray-600">{order.customer_name}</p>
-                  <p className="text-sm text-gray-600">{order.customer_email}</p>
-                  <p className="text-sm text-gray-600">{order.customer_phone}</p>
-                </div>
-                <div className="text-right">
-                  <Badge className={getStatusColor(order.status)}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
-                  </Badge>
-                  <p className="text-lg font-bold mt-1">
-                    PKR {order.total_amount.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                <div>
-                  <p className="text-sm font-medium">Complete Delivery Address:</p>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded mt-1">
-                    {order.customer_address}
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" />
-                    Payment Details:
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {order.payment_method === 'cod' ? (
-                      <Truck className="w-4 h-4 text-gray-600" />
-                    ) : (
-                      <CreditCard className="w-4 h-4 text-gray-600" />
-                    )}
-                    <span className="text-sm">
-                      {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
-                    </span>
-                  </div>
-                  <Badge className={getPaymentStatusColor(order.payment_status)}>
-                    Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <p className="text-sm font-medium">Items:</p>
-                <ul className="text-sm text-gray-600">
-                  {order.order_items.map((item, index) => (
-                    <li key={index}>
-                      {item.product_name} - Qty: {item.quantity} - PKR {(item.product_price * item.quantity).toLocaleString()}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => updateOrderStatus(order.id, 'processing')}
-                  disabled={order.status === 'processing'}
-                >
-                  Mark Processing
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => updateOrderStatus(order.id, 'shipped')}
-                  disabled={order.status === 'shipped' || order.status === 'delivered'}
-                >
-                  Mark Shipped
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => updateOrderStatus(order.id, 'delivered')}
-                  disabled={order.status === 'delivered'}
-                >
-                  Mark Delivered
-                </Button>
-              </div>
+    <div className="space-y-6">
+      {/* Header with Action Buttons */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <FileDown className="w-5 h-5" />
+              Order Management & Reports
+            </CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <OrdersPDFGenerator orders={orders} status="pending" />
+              <OrdersPDFGenerator orders={orders} status="all" />
+              <Button
+                onClick={() => setShowBulkUpdater(!showBulkUpdater)}
+                variant="outline"
+                className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+              >
+                <Users className="w-4 h-4" />
+                {showBulkUpdater ? 'Hide' : 'Show'} Bulk Operations
+              </Button>
             </div>
-          ))}
-        </div>
-
-        {orders.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No orders found.
           </div>
+        </CardHeader>
+        {showBulkUpdater && (
+          <CardContent>
+            <BulkStatusUpdater orders={orders} onUpdate={fetchOrders} />
+          </CardContent>
         )}
-      </CardContent>
-    </Card>
+      </Card>
+
+      {/* Orders List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Orders ({orders.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {orders.map((order) => (
+              <div key={order.id} className="border rounded-lg p-4 bg-gradient-to-r from-white to-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-semibold text-lg">{order.order_number}</h3>
+                    <p className="text-sm text-gray-600">{order.customer_name}</p>
+                    <p className="text-sm text-gray-600">{order.customer_email}</p>
+                    <p className="text-sm text-gray-600">{order.customer_phone}</p>
+                  </div>
+                  <div className="text-right">
+                    <Badge className={getStatusColor(order.status)}>
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
+                    </Badge>
+                    <p className="text-lg font-bold mt-1 text-green-600">
+                      PKR {order.total_amount.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <p className="text-sm font-medium">Complete Delivery Address:</p>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded mt-1">
+                      {order.customer_address}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Payment Details:
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {order.payment_method === 'cod' ? (
+                        <Truck className="w-4 h-4 text-gray-600" />
+                      ) : (
+                        <CreditCard className="w-4 h-4 text-gray-600" />
+                      )}
+                      <span className="text-sm">
+                        {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+                      </span>
+                    </div>
+                    <Badge className={getPaymentStatusColor(order.payment_status)}>
+                      Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <p className="text-sm font-medium">Items:</p>
+                  <ul className="text-sm text-gray-600">
+                    {order.order_items.map((item, index) => (
+                      <li key={index}>
+                        {item.product_name} - Qty: {item.quantity} - PKR {(item.product_price * item.quantity).toLocaleString()}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => updateOrderStatus(order.id, 'processing')}
+                    disabled={order.status === 'processing'}
+                    size="sm"
+                  >
+                    Mark Processing
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => updateOrderStatus(order.id, 'shipped')}
+                    disabled={order.status === 'shipped' || order.status === 'delivered'}
+                    size="sm"
+                  >
+                    Mark Shipped
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => updateOrderStatus(order.id, 'delivered')}
+                    disabled={order.status === 'delivered'}
+                    size="sm"
+                  >
+                    Mark Delivered
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {orders.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No orders found.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
