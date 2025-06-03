@@ -6,114 +6,124 @@ import { useToast } from '@/hooks/use-toast';
 
 // Dynamic imports for jsPDF to avoid SSR issues
 const generatePDF = async (orders: any[], status: string, toast: any) => {
-  const jsPDF = (await import('jspdf')).default;
-  await import('jspdf-autotable');
+  try {
+    const jsPDF = (await import('jspdf')).default;
+    await import('jspdf-autotable');
 
-  // Filter orders by status
-  const filteredOrders = orders.filter(order => 
-    status === 'all' ? true : order.status.toLowerCase() === status.toLowerCase()
-  );
+    // Filter orders by status
+    const filteredOrders = orders.filter(order => 
+      status === 'all' ? true : order.status.toLowerCase() === status.toLowerCase()
+    );
 
-  if (filteredOrders.length === 0) {
-    toast({
-      title: "No Orders Found",
-      description: `No ${status} orders to export.`,
-      variant: "destructive",
-    });
-    return;
-  }
-
-  const pdf = new jsPDF();
-  
-  // Header
-  pdf.setFontSize(20);
-  pdf.setTextColor(40, 40, 40);
-  pdf.text('A&Z Fabrics - Orders Report', 20, 30);
-  
-  pdf.setFontSize(12);
-  pdf.setTextColor(100, 100, 100);
-  pdf.text(`Status: ${status.charAt(0).toUpperCase() + status.slice(1)} Orders`, 20, 40);
-  pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 50);
-  pdf.text(`Total Orders: ${filteredOrders.length}`, 20, 60);
-
-  let yPosition = 80;
-
-  filteredOrders.forEach((order, index) => {
-    // Check if we need a new page
-    if (yPosition > 250) {
-      pdf.addPage();
-      yPosition = 20;
+    if (filteredOrders.length === 0) {
+      toast({
+        title: "No Orders Found",
+        description: `No ${status} orders to export.`,
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Order header
-    pdf.setFontSize(14);
+    const pdf = new jsPDF();
+    
+    // Header
+    pdf.setFontSize(20);
     pdf.setTextColor(40, 40, 40);
-    pdf.text(`Order: ${order.order_number}`, 20, yPosition);
+    pdf.text('A&Z Fabrics - Orders Report', 20, 30);
     
-    pdf.setFontSize(10);
+    pdf.setFontSize(12);
     pdf.setTextColor(100, 100, 100);
-    pdf.text(`Status: ${order.status}`, 120, yPosition);
-    pdf.text(`PKR ${order.total_amount.toLocaleString()}`, 160, yPosition);
+    pdf.text(`Status: ${status.charAt(0).toUpperCase() + status.slice(1)} Orders`, 20, 40);
+    pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 50);
+    pdf.text(`Total Orders: ${filteredOrders.length}`, 20, 60);
 
-    yPosition += 10;
+    let yPosition = 80;
 
-    // Customer details
-    pdf.setFontSize(10);
-    pdf.setTextColor(60, 60, 60);
-    pdf.text(`Customer: ${order.customer_name}`, 20, yPosition);
-    pdf.text(`Email: ${order.customer_email}`, 20, yPosition + 8);
-    pdf.text(`Phone: ${order.customer_phone}`, 20, yPosition + 16);
-    
-    yPosition += 25;
+    filteredOrders.forEach((order, index) => {
+      // Check if we need a new page
+      if (yPosition > 250) {
+        pdf.addPage();
+        yPosition = 20;
+      }
 
-    // Address
-    pdf.text(`Address: ${order.customer_address}`, 20, yPosition);
-    yPosition += 10;
+      // Order header
+      pdf.setFontSize(14);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text(`Order: ${order.order_number}`, 20, yPosition);
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Status: ${order.status}`, 120, yPosition);
+      pdf.text(`PKR ${order.total_amount.toLocaleString()}`, 160, yPosition);
 
-    // Items table
-    const tableData = order.order_items.map((item: any) => [
-      item.product_name,
-      item.quantity.toString(),
-      `PKR ${item.product_price.toLocaleString()}`,
-      `PKR ${(item.product_price * item.quantity).toLocaleString()}`
-    ]);
+      yPosition += 10;
 
-    (pdf as any).autoTable({
-      startY: yPosition,
-      head: [['Product', 'Qty', 'Unit Price', 'Total']],
-      body: tableData,
-      margin: { left: 20 },
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [220, 220, 220] }
+      // Customer details
+      pdf.setFontSize(10);
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(`Customer: ${order.customer_name}`, 20, yPosition);
+      pdf.text(`Email: ${order.customer_email}`, 20, yPosition + 8);
+      pdf.text(`Phone: ${order.customer_phone}`, 20, yPosition + 16);
+      
+      yPosition += 25;
+
+      // Address
+      pdf.text(`Address: ${order.customer_address}`, 20, yPosition);
+      yPosition += 10;
+
+      // Items table
+      const tableData = order.order_items.map((item: any) => [
+        item.product_name,
+        item.quantity.toString(),
+        `PKR ${item.product_price.toLocaleString()}`,
+        `PKR ${(item.product_price * item.quantity).toLocaleString()}`
+      ]);
+
+      (pdf as any).autoTable({
+        startY: yPosition,
+        head: [['Product', 'Qty', 'Unit Price', 'Total']],
+        body: tableData,
+        margin: { left: 20 },
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [220, 220, 220] }
+      });
+
+      yPosition = (pdf as any).lastAutoTable.finalY + 15;
+
+      // Order date
+      pdf.setFontSize(8);
+      pdf.setTextColor(120, 120, 120);
+      pdf.text(`Order Date: ${new Date(order.created_at).toLocaleDateString()}`, 20, yPosition);
+      
+      yPosition += 20;
     });
 
-    yPosition = (pdf as any).lastAutoTable.finalY + 15;
+    // Footer - using getNumberOfPages with proper type casting
+    pdf.setFontSize(10);
+    pdf.setTextColor(60, 60, 60);
+    const pageCount = (pdf as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i);
+      pdf.text(`A&Z Fabrics | Contact: +92 3090449955`, 20, (pdf as any).internal.pageSize.height - 20);
+      pdf.text(`Page ${i} of ${pageCount}`, (pdf as any).internal.pageSize.width - 40, (pdf as any).internal.pageSize.height - 20);
+    }
 
-    // Order date
-    pdf.setFontSize(8);
-    pdf.setTextColor(120, 120, 120);
-    pdf.text(`Order Date: ${new Date(order.created_at).toLocaleDateString()}`, 20, yPosition);
-    
-    yPosition += 20;
-  });
+    // Download PDF
+    pdf.save(`${status}-orders-${new Date().toISOString().split('T')[0]}.pdf`);
 
-  // Footer - using getNumberOfPages with proper type casting
-  pdf.setFontSize(10);
-  pdf.setTextColor(60, 60, 60);
-  const pageCount = (pdf as any).internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    pdf.setPage(i);
-    pdf.text(`A&Z Fabrics | Contact: +92 3090449955`, 20, (pdf as any).internal.pageSize.height - 20);
-    pdf.text(`Page ${i} of ${pageCount}`, (pdf as any).internal.pageSize.width - 40, (pdf as any).internal.pageSize.height - 20);
+    toast({
+      title: "PDF Generated Successfully! 📄",
+      description: `Downloaded ${filteredOrders.length} ${status} orders report.`,
+    });
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    toast({
+      title: "PDF Generation Failed",
+      description: "There was an error generating the PDF. Please try again.",
+      variant: "destructive",
+    });
   }
-
-  // Download PDF
-  pdf.save(`${status}-orders-${new Date().toISOString().split('T')[0]}.pdf`);
-
-  toast({
-    title: "PDF Generated Successfully! 📄",
-    description: `Downloaded ${filteredOrders.length} ${status} orders report.`,
-  });
 };
 
 interface Order {

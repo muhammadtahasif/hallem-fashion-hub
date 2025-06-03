@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckSquare, Square } from 'lucide-react';
+import { RefreshCw, CheckSquare, Square, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -23,6 +23,7 @@ const BulkStatusUpdater = ({ orders, onUpdate }: BulkStatusUpdaterProps) => {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [newStatus, setNewStatus] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   const toggleOrderSelection = (orderId: string) => {
@@ -81,6 +82,59 @@ const BulkStatusUpdater = ({ orders, onUpdate }: BulkStatusUpdaterProps) => {
       });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const deleteSelectedOrders = async () => {
+    if (selectedOrders.size === 0) {
+      toast({
+        title: "Selection Required",
+        description: "Please select orders to delete.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedOrders.size} selected orders? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      // First delete order items
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .in('order_id', Array.from(selectedOrders));
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the orders
+      const { error: ordersError } = await supabase
+        .from('orders')
+        .delete()
+        .in('id', Array.from(selectedOrders));
+
+      if (ordersError) throw ordersError;
+
+      toast({
+        title: "🗑️ Orders Deleted Successfully!",
+        description: `Deleted ${selectedOrders.size} orders.`,
+      });
+
+      setSelectedOrders(new Set());
+      onUpdate();
+
+    } catch (error) {
+      console.error('Error deleting orders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete orders.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -145,6 +199,20 @@ const BulkStatusUpdater = ({ orders, onUpdate }: BulkStatusUpdaterProps) => {
               <RefreshCw className="w-4 h-4" />
             )}
             Update Status
+          </Button>
+
+          <Button
+            onClick={deleteSelectedOrders}
+            disabled={isDeleting || selectedOrders.size === 0}
+            variant="destructive"
+            className="flex items-center gap-2"
+          >
+            {isDeleting ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            Delete Selected
           </Button>
         </div>
       </div>

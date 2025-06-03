@@ -41,19 +41,27 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     if (id) {
       fetchProduct();
+    } else {
+      setError("No product ID provided");
+      setLoading(false);
     }
   }, [id]);
 
   const fetchProduct = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      setError(null);
+      
+      console.log('Fetching product with ID:', id);
+      
+      const { data, error: fetchError } = await supabase
         .from('products')
         .select(`
           *,
@@ -65,32 +73,35 @@ const ProductDetail = () => {
         .eq('id', id)
         .single();
 
-      if (error) {
-        console.error('Error fetching product:', error);
-        toast({
-          title: "Error",
-          description: "Product not found.",
-          variant: "destructive",
-        });
-        navigate('/shop');
+      if (fetchError) {
+        console.error('Supabase error:', fetchError);
+        setError("Product not found");
         return;
       }
 
+      if (!data) {
+        setError("Product not found");
+        return;
+      }
+
+      console.log('Product fetched successfully:', data);
       setProduct(data);
     } catch (error) {
       console.error('Error fetching product:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load product.",
-        variant: "destructive",
-      });
+      setError("Failed to load product");
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddToCart = () => {
-    addToCart(product!.id, quantity);
+    if (product) {
+      addToCart(product.id, quantity);
+      toast({
+        title: "Added to cart",
+        description: `${product.name} has been added to your cart.`,
+      });
+    }
   };
 
   const handleWishlist = () => {
@@ -126,11 +137,11 @@ const ProductDetail = () => {
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Product not found</h2>
+          <h2 className="text-2xl font-bold mb-4">{error || "Product not found"}</h2>
           <Button onClick={() => navigate('/shop')} className="bg-rose-500 hover:bg-rose-600">
             Back to Shop
           </Button>
