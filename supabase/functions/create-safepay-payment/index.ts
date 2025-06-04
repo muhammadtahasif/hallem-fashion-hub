@@ -35,7 +35,6 @@ serve(async (req) => {
     
     if (!apiKey || !secretKey) {
       console.error('SAFEPAY credentials not found')
-      // Return COD fallback
       return new Response(
         JSON.stringify({
           success: true,
@@ -80,7 +79,7 @@ serve(async (req) => {
 
     // Create payment session with SAFEPAY
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
     try {
       const response = await fetch('https://gw.sandbox.safepay.pk/checkout/create', {
@@ -107,7 +106,6 @@ serve(async (req) => {
           body: responseText
         })
         
-        // Return a COD fallback instead of error
         return new Response(
           JSON.stringify({
             success: true,
@@ -126,7 +124,6 @@ serve(async (req) => {
         responseData = JSON.parse(responseText)
       } catch (parseError) {
         console.error('Failed to parse SAFEPAY response:', parseError)
-        // Return COD fallback
         return new Response(
           JSON.stringify({
             success: true,
@@ -156,7 +153,6 @@ serve(async (req) => {
         )
       } else {
         console.error('Invalid SAFEPAY response structure:', responseData)
-        // Return COD fallback
         return new Response(
           JSON.stringify({
             success: true,
@@ -174,7 +170,6 @@ serve(async (req) => {
       clearTimeout(timeoutId)
       console.error('Network error connecting to SAFEPAY:', fetchError)
       
-      // Return COD fallback for network errors
       return new Response(
         JSON.stringify({
           success: true,
@@ -190,7 +185,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error creating SAFEPAY payment:', error)
-    // Return COD fallback instead of error
     return new Response(
       JSON.stringify({
         success: true,
@@ -198,7 +192,7 @@ serve(async (req) => {
         message: "Payment service is temporarily unavailable. Your order will be processed as Cash on Delivery."
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )

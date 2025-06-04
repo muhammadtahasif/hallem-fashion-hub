@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -102,21 +101,29 @@ const BulkStatusUpdater = ({ orders, onUpdate }: BulkStatusUpdaterProps) => {
     setIsDeleting(true);
 
     try {
-      // First delete order items
+      const orderIds = Array.from(selectedOrders);
+
+      // Delete order items first (foreign key constraint)
       const { error: itemsError } = await supabase
         .from('order_items')
         .delete()
-        .in('order_id', Array.from(selectedOrders));
+        .in('order_id', orderIds);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Error deleting order items:', itemsError);
+        throw itemsError;
+      }
 
       // Then delete the orders
       const { error: ordersError } = await supabase
         .from('orders')
         .delete()
-        .in('id', Array.from(selectedOrders));
+        .in('id', orderIds);
 
-      if (ordersError) throw ordersError;
+      if (ordersError) {
+        console.error('Error deleting orders:', ordersError);
+        throw ordersError;
+      }
 
       toast({
         title: "🗑️ Orders Deleted Successfully!",
@@ -130,7 +137,7 @@ const BulkStatusUpdater = ({ orders, onUpdate }: BulkStatusUpdaterProps) => {
       console.error('Error deleting orders:', error);
       toast({
         title: "Error",
-        description: "Failed to delete orders.",
+        description: "Failed to delete orders. Please try again.",
         variant: "destructive",
       });
     } finally {

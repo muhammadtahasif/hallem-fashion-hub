@@ -34,7 +34,7 @@ interface Product {
 }
 
 const ProductDetail = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -46,15 +46,23 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
+    console.log('ProductDetail mounted, ID from params:', id);
     if (id) {
       fetchProduct();
     } else {
+      console.error('No product ID provided in URL params');
       setError("No product ID provided");
       setLoading(false);
     }
   }, [id]);
 
   const fetchProduct = async () => {
+    if (!id) {
+      setError("No product ID provided");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);

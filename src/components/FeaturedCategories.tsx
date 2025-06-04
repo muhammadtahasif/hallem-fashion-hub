@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Category {
@@ -14,6 +14,7 @@ interface Category {
 const FeaturedCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     fetchCategories();

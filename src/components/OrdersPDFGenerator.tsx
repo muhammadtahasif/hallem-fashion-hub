@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Download, FileText, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Dynamic imports for jsPDF to avoid SSR issues
 const generatePDF = async (orders: any[], status: string, toast: any) => {
   try {
+    // Dynamic imports for jsPDF
     const jsPDF = (await import('jspdf')).default;
     await import('jspdf-autotable');
 
@@ -39,7 +39,7 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
 
     let yPosition = 80;
 
-    filteredOrders.forEach((order, index) => {
+    filteredOrders.forEach((order) => {
       // Check if we need a new page
       if (yPosition > 250) {
         pdf.addPage();
@@ -98,12 +98,12 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
       yPosition += 20;
     });
 
-    // Footer - using getNumberOfPages with proper type casting
-    pdf.setFontSize(10);
-    pdf.setTextColor(60, 60, 60);
+    // Footer
     const pageCount = (pdf as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       pdf.setPage(i);
+      pdf.setFontSize(10);
+      pdf.setTextColor(60, 60, 60);
       pdf.text(`A&Z Fabrics | Contact: +92 3090449955`, 20, (pdf as any).internal.pageSize.height - 20);
       pdf.text(`Page ${i} of ${pageCount}`, (pdf as any).internal.pageSize.width - 40, (pdf as any).internal.pageSize.height - 20);
     }
