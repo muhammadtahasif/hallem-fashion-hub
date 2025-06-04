@@ -95,8 +95,8 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
       pdf.setTextColor(17, 24, 39);
       pdf.text(`${order.order_number}`, 25, yPosition + 5);
       
-      // Status Badge
-      const statusColors = {
+      // Status Badge - Fixed TypeScript error by explicitly defining color tuples
+      const statusColors: Record<string, [number, number, number]> = {
         'pending': [255, 146, 43],
         'confirmed': [34, 197, 94],
         'shipped': [59, 130, 246],
@@ -104,8 +104,8 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
         'cancelled': [239, 68, 68]
       };
       
-      const statusColor = statusColors[order.status.toLowerCase()] || [107, 114, 128];
-      pdf.setFillColor(...statusColor);
+      const statusColor = statusColors[order.status.toLowerCase()] || [107, 114, 128] as [number, number, number];
+      pdf.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
       pdf.rect(145, yPosition + 1, 35, 6, 'F');
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(9);
