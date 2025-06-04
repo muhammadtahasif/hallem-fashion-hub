@@ -57,7 +57,7 @@ Please process this order ASAP!`;
       },
       body: new URLSearchParams({
         From: twilioPhoneNumber,
-        To: '+923086932240',
+        To: '+923234882256',
         Body: adminMessage,
       }),
     });

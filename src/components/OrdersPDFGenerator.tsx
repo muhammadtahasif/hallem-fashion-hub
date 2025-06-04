@@ -1,242 +1,8 @@
-
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Download, FileText, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-
-const generatePDF = async (orders: any[], status: string, toast: any) => {
-  try {
-    console.log('Starting PDF generation for', orders.length, 'orders');
-    
-    const jsPDF = (await import('jspdf')).default;
-    await import('jspdf-autotable');
-
-    const filteredOrders = orders.filter(order => 
-      status === 'all' ? true : order.status.toLowerCase() === status.toLowerCase()
-    );
-
-    if (filteredOrders.length === 0) {
-      toast({
-        title: "No Orders Found",
-        description: `No ${status} orders to export.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const pdf = new jsPDF();
-    
-    // Professional Header with Company Branding
-    pdf.setFillColor(236, 72, 153); // Rose color
-    pdf.rect(0, 0, 210, 35, 'F');
-    
-    // Company Logo/Name
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(24);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('A&Z FABRICS', 20, 20);
-    
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('Premium Fashion Collection', 20, 28);
-    
-    // Contact Info
-    pdf.setFontSize(10);
-    pdf.text('Phone: +92 3090449955 | Email: info@azfabrics.com', 20, 32);
-    
-    // Report Title Section
-    pdf.setTextColor(51, 51, 51);
-    pdf.setFontSize(20);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('ORDERS REPORT', 20, 50);
-    
-    // Report Details Box
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setFillColor(248, 250, 252);
-    pdf.rect(20, 55, 170, 25, 'FD');
-    
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(75, 85, 99);
-    
-    const statusText = status.charAt(0).toUpperCase() + status.slice(1);
-    pdf.text(`Report Type: ${statusText} Orders`, 25, 65);
-    pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })}`, 25, 72);
-    pdf.text(`Total Orders: ${filteredOrders.length}`, 25, 79);
-
-    // Summary Statistics
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.total_amount, 0);
-    pdf.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 120, 65);
-    pdf.text(`Average Order: PKR ${Math.round(totalRevenue / filteredOrders.length).toLocaleString()}`, 120, 72);
-
-    let yPosition = 95;
-
-    // Orders Section
-    filteredOrders.forEach((order, index) => {
-      if (yPosition > 240) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-
-      // Order Card Design
-      pdf.setFillColor(255, 255, 255);
-      pdf.setDrawColor(229, 231, 235);
-      pdf.rect(20, yPosition, 170, 8, 'FD');
-      
-      // Order Header
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(17, 24, 39);
-      pdf.text(`${order.order_number}`, 25, yPosition + 5);
-      
-      // Status Badge - Fixed TypeScript error by explicitly defining color tuples
-      const statusColors: Record<string, [number, number, number]> = {
-        'pending': [255, 146, 43],
-        'confirmed': [34, 197, 94],
-        'shipped': [59, 130, 246],
-        'delivered': [16, 185, 129],
-        'cancelled': [239, 68, 68]
-      };
-      
-      const statusColor = statusColors[order.status.toLowerCase()] || [107, 114, 128] as [number, number, number];
-      pdf.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-      pdf.rect(145, yPosition + 1, 35, 6, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(order.status.toUpperCase(), 147, yPosition + 5);
-      
-      // Amount
-      pdf.setTextColor(236, 72, 153);
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(`PKR ${order.total_amount.toLocaleString()}`, 182, yPosition + 5);
-
-      yPosition += 12;
-
-      // Customer Information Section
-      pdf.setFillColor(249, 250, 251);
-      pdf.rect(20, yPosition, 170, 20, 'F');
-      
-      pdf.setTextColor(55, 65, 81);
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CUSTOMER DETAILS', 25, yPosition + 6);
-      
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(75, 85, 99);
-      pdf.text(`Name: ${order.customer_name}`, 25, yPosition + 11);
-      pdf.text(`Email: ${order.customer_email}`, 25, yPosition + 16);
-      
-      pdf.text(`Phone: ${order.customer_phone}`, 110, yPosition + 11);
-      pdf.text(`Date: ${new Date(order.created_at).toLocaleDateString()}`, 110, yPosition + 16);
-
-      yPosition += 25;
-
-      // Address
-      pdf.setFontSize(9);
-      pdf.setTextColor(107, 114, 128);
-      pdf.text(`Address: ${order.customer_address}`, 25, yPosition);
-      yPosition += 8;
-
-      // Items Table
-      const tableData = order.order_items.map((item: any) => [
-        item.product_name,
-        item.quantity.toString(),
-        `PKR ${item.product_price.toLocaleString()}`,
-        `PKR ${(item.product_price * item.quantity).toLocaleString()}`
-      ]);
-
-      try {
-        (pdf as any).autoTable({
-          startY: yPosition,
-          head: [['Product', 'Qty', 'Unit Price', 'Total']],
-          body: tableData,
-          margin: { left: 20, right: 20 },
-          styles: { 
-            fontSize: 9,
-            cellPadding: 3,
-            lineColor: [229, 231, 235],
-            lineWidth: 0.5
-          },
-          headStyles: { 
-            fillColor: [236, 72, 153],
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            fontSize: 10
-          },
-          bodyStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [55, 65, 81]
-          },
-          alternateRowStyles: {
-            fillColor: [248, 250, 252]
-          },
-          tableWidth: 170
-        });
-
-        yPosition = (pdf as any).lastAutoTable.finalY + 15;
-      } catch (tableError) {
-        console.error('Error creating table for order:', order.order_number, tableError);
-        yPosition += 30;
-      }
-
-      // Order separator line
-      pdf.setDrawColor(229, 231, 235);
-      pdf.line(20, yPosition, 190, yPosition);
-      yPosition += 10;
-    });
-
-    // Professional Footer
-    try {
-      const pageCount = (pdf as any).internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        pdf.setPage(i);
-        
-        // Footer background
-        pdf.setFillColor(248, 250, 252);
-        pdf.rect(0, (pdf as any).internal.pageSize.height - 25, 210, 25, 'F');
-        
-        // Footer content
-        pdf.setFontSize(9);
-        pdf.setTextColor(107, 114, 128);
-        pdf.text('A&Z Fabrics - Premium Fashion Collection', 20, (pdf as any).internal.pageSize.height - 15);
-        pdf.text('Contact: +92 3090449955 | www.azfabrics.com', 20, (pdf as any).internal.pageSize.height - 8);
-        
-        // Page number
-        pdf.setTextColor(156, 163, 175);
-        pdf.text(`Page ${i} of ${pageCount}`, (pdf as any).internal.pageSize.width - 40, (pdf as any).internal.pageSize.height - 8);
-        
-        // Report timestamp
-        pdf.text(`Report generated on ${new Date().toLocaleDateString()}`, (pdf as any).internal.pageSize.width - 80, (pdf as any).internal.pageSize.height - 15);
-      }
-    } catch (footerError) {
-      console.error('Error adding footer:', footerError);
-    }
-
-    const fileName = `AZ-Fabrics-${statusText}-Orders-${new Date().toISOString().split('T')[0]}.pdf`;
-    pdf.save(fileName);
-
-    toast({
-      title: "Professional PDF Generated! 📄✨",
-      description: `Downloaded ${filteredOrders.length} ${status} orders report with professional styling.`,
-    });
-
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    toast({
-      title: "PDF Generation Failed",
-      description: "There was an error generating the PDF. Please try again.",
-      variant: "destructive",
-    });
-  }
-};
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Order {
   id: string;
@@ -247,37 +13,239 @@ interface Order {
   customer_address: string;
   total_amount: number;
   status: string;
-  payment_method: string;
-  payment_status: string;
   created_at: string;
   order_items: Array<{
     product_name: string;
     quantity: number;
     product_price: number;
+    products?: {
+      sku: string;
+    };
   }>;
 }
 
 interface OrdersPDFGeneratorProps {
   orders: Order[];
-  status?: string;
+  title?: string;
 }
 
-const OrdersPDFGenerator = ({ orders, status = 'pending' }: OrdersPDFGeneratorProps) => {
+const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const { toast } = useToast();
 
-  const handleGeneratePDF = async () => {
+  const generatePDF = async () => {
     setIsGenerating(true);
     
     try {
-      await generatePDF(orders, status, toast);
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      // Define colors as tuples
+      const primaryColor: [number, number, number] = [236, 72, 153]; // Rose 500
+      const headerBgColor: [number, number, number] = [249, 250, 251]; // Gray 50
+      const borderColor: [number, number, number] = [229, 231, 235]; // Gray 200
+      const textDark: [number, number, number] = [31, 41, 55]; // Gray 800
+      const textMuted: [number, number, number] = [107, 114, 128]; // Gray 500
+
+      // Header section with improved design
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('A&Z FABRICS', 15, 22);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Premium Fashion Collection', 15, 30);
+      
+      // Contact info in header
+      doc.setFontSize(9);
+      const contactY = 22;
+      doc.text('📞 +923234882256', pageWidth - 55, contactY);
+      doc.text('✉️ digitaleyemedia25@gmail.com', pageWidth - 55, contactY + 6);
+
+      // Report title with styling
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, 15, 50);
+      
+      // Date and summary info
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+      const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      doc.text(`Generated on: ${currentDate}`, 15, 58);
+      doc.text(`Total Orders: ${orders.length}`, 15, 66);
+      
+      const totalRevenue = orders.reduce((sum, order) => sum + order.total_amount, 0);
+      doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 15, 74);
+
+      // Decorative line
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.line(15, 80, pageWidth - 15, 80);
+
+      // Table data preparation
+      const tableData = orders.map((order, index) => [
+        (index + 1).toString(),
+        order.order_number,
+        order.customer_name,
+        order.customer_phone,
+        `PKR ${order.total_amount.toLocaleString()}`,
+        order.status.charAt(0).toUpperCase() + order.status.slice(1),
+        new Date(order.created_at).toLocaleDateString('en-US', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })
+      ]);
+
+      // Enhanced table with professional styling
+      autoTable(doc, {
+        head: [['#', 'Order ID', 'Customer', 'Phone', 'Amount', 'Status', 'Date']],
+        body: tableData,
+        startY: 88,
+        theme: 'grid',
+        headStyles: {
+          fillColor: headerBgColor,
+          textColor: textDark,
+          fontStyle: 'bold',
+          fontSize: 9,
+          cellPadding: { top: 8, right: 5, bottom: 8, left: 5 },
+          lineColor: borderColor,
+          lineWidth: 0.5,
+        },
+        bodyStyles: {
+          fontSize: 8,
+          cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
+          lineColor: borderColor,
+          lineWidth: 0.3,
+          textColor: textDark,
+        },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'center' }, // #
+          1: { cellWidth: 35, fontStyle: 'bold' }, // Order ID
+          2: { cellWidth: 40 }, // Customer
+          3: { cellWidth: 35 }, // Phone
+          4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }, // Amount
+          5: { cellWidth: 25, halign: 'center' }, // Status
+          6: { cellWidth: 28, halign: 'center' }, // Date
+        },
+        alternateRowStyles: {
+          fillColor: [252, 252, 252] // Very light gray
+        },
+        margin: { left: 15, right: 15 },
+        didDrawCell: (data) => {
+          // Add status badges with colors
+          if (data.column.index === 5 && data.cell.section === 'body') {
+            const status = data.cell.text[0].toLowerCase();
+            let statusColor: [number, number, number];
+            
+            switch (status) {
+              case 'pending':
+                statusColor = [252, 211, 77]; // Yellow
+                break;
+              case 'processing':
+                statusColor = [96, 165, 250]; // Blue
+                break;
+              case 'shipped':
+                statusColor = [168, 85, 247]; // Purple
+                break;
+              case 'delivered':
+                statusColor = [52, 211, 153]; // Green
+                break;
+              case 'cancelled':
+                statusColor = [248, 113, 113]; // Red
+                break;
+              default:
+                statusColor = [156, 163, 175]; // Gray
+            }
+            
+            // Draw colored background for status
+            doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+            doc.roundedRect(
+              data.cell.x + 2, 
+              data.cell.y + 2, 
+              data.cell.width - 4, 
+              data.cell.height - 4, 
+              2, 2, 'F'
+            );
+            
+            // Add status text with white color
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.text(
+              data.cell.text[0], 
+              data.cell.x + data.cell.width / 2, 
+              data.cell.y + data.cell.height / 2 + 1, 
+              { align: 'center' }
+            );
+          }
+        }
+      });
+
+      // Footer with enhanced design
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      if (finalY < pageHeight - 30) {
+        // Summary box
+        doc.setFillColor(headerBgColor[0], headerBgColor[1], headerBgColor[2]);
+        doc.roundedRect(15, finalY, pageWidth - 30, 25, 3, 3, 'F');
+        
+        doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(15, finalY, pageWidth - 30, 25, 3, 3, 'S');
+        
+        doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Summary', 20, finalY + 8);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Total Orders: ${orders.length}`, 20, finalY + 16);
+        doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 20, finalY + 22);
+        
+        // Average order value
+        const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+        doc.text(`Average Order Value: PKR ${Math.round(avgOrderValue).toLocaleString()}`, pageWidth - 80, finalY + 16);
+        
+        // Order status distribution
+        const statusCounts = orders.reduce((acc, order) => {
+          acc[order.status] = (acc[order.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        let statusText = 'Status: ';
+        Object.entries(statusCounts).forEach(([status, count], index) => {
+          statusText += `${status}: ${count}`;
+          if (index < Object.entries(statusCounts).length - 1) statusText += ', ';
+        });
+        doc.text(statusText, pageWidth - 80, finalY + 22);
+      }
+
+      // Page footer
+      doc.setFontSize(8);
+      doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+      doc.text('A&Z Fabrics - Premium Fashion Collection', pageWidth / 2, pageHeight - 15, { align: 'center' });
+      doc.text('This is a computer-generated document.', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      
+      // Page numbering
+      doc.text(`Page 1 of 1`, pageWidth - 20, pageHeight - 10);
+
+      // Save the PDF
+      const fileName = `${title.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast({
-        title: "Error Generating PDF",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
     } finally {
       setIsGenerating(false);
     }
@@ -285,18 +253,22 @@ const OrdersPDFGenerator = ({ orders, status = 'pending' }: OrdersPDFGeneratorPr
 
   return (
     <Button
-      onClick={handleGeneratePDF}
-      disabled={isGenerating}
-      variant="outline"
-      className="flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border-green-200 text-green-700 font-medium shadow-sm transition-all duration-200"
+      onClick={generatePDF}
+      disabled={isGenerating || orders.length === 0}
+      className="bg-rose-500 hover:bg-rose-600 text-white"
+      size="sm"
     >
       {isGenerating ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          Generating...
+        </div>
       ) : (
-        <Download className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Download PDF
+        </div>
       )}
-      {isGenerating ? 'Generating Professional PDF...' : `Download ${status.charAt(0).toUpperCase() + status.slice(1)} Orders PDF`}
-      <FileText className="w-4 h-4" />
     </Button>
   );
 };

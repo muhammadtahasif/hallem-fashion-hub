@@ -54,14 +54,14 @@ const FeaturedCategories = () => {
 
   if (isLoading) {
     return (
-      <section className="py-16 bg-gray-50">
+      <section className="py-12 sm:py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12 font-serif">Our Categories</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8 sm:mb-12 font-serif">Our Categories</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-                <div className="h-48 bg-gray-300"></div>
-                <div className="p-6">
+                <div className="h-40 sm:h-48 bg-gray-300"></div>
+                <div className="p-4 sm:p-6">
                   <div className="h-6 bg-gray-300 rounded mb-2"></div>
                   <div className="h-4 bg-gray-300 rounded w-3/4"></div>
                 </div>
@@ -78,17 +78,17 @@ const FeaturedCategories = () => {
   }
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-12 sm:py-16 bg-gray-50">
       <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-12 font-serif">Our Categories</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8 sm:mb-12 font-serif">Our Categories</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {categories.map((category) => (
             <Link
               key={category.id}
               to={`/shop?category=${category.slug}`}
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow group"
             >
-              <div className="h-48 overflow-hidden">
+              <div className="h-40 sm:h-48 overflow-hidden relative">
                 {category.image_url ? (
                   <img
                     src={category.image_url}
@@ -102,13 +102,14 @@ const FeaturedCategories = () => {
                     </span>
                   </div>
                 )}
+                <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-300"></div>
               </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold mb-2 capitalize text-gray-800 group-hover:text-rose-600 transition-colors">
+              <div className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 capitalize text-gray-800 group-hover:text-rose-600 transition-colors">
                   {category.name}
                 </h3>
                 {category.description && (
-                  <p className="text-gray-600 text-sm">{category.description}</p>
+                  <p className="text-gray-600 text-sm line-clamp-2">{category.description}</p>
                 )}
               </div>
             </Link>

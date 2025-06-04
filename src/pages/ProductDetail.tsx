@@ -1,162 +1,132 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ShoppingCart, ArrowLeft, Heart } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Minus, Plus, ShoppingCart, Heart, ArrowLeft, ZoomIn, X } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import RelatedProducts from "@/components/RelatedProducts";
-import RandomProducts from "@/components/RandomProducts";
 import BuyNowButton from "@/components/BuyNowButton";
+import RelatedProducts from "@/components/RelatedProducts";
 
 interface Product {
   id: string;
   name: string;
+  description: string;
   price: number;
   original_price?: number;
-  description?: string;
-  image_url: string;
-  images?: string[];
-  category_id?: string;
   stock: number;
+  image_url: string;
   featured: boolean;
-  slug: string;
   sku: string;
   categories?: {
+    id: string;
     name: string;
-    slug: string;
   };
 }
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
   const { addToCart } = useCart();
+  const { toast } = useToast();
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
-    console.log('ProductDetail mounted, ID from params:', id);
-    
-    if (!id) {
-      console.error('No product ID provided in URL params');
-      setError("No product ID provided");
-      setLoading(false);
-      return;
+    if (id) {
+      fetchProduct();
     }
-    
-    fetchProduct();
   }, [id]);
 
   const fetchProduct = async () => {
-    if (!id) {
-      setError("No product ID provided");
-      setLoading(false);
-      return;
-    }
+    if (!id) return;
 
     try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('Fetching product with ID:', id);
-      
-      const { data, error: fetchError } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select(`
           *,
           categories (
-            name,
-            slug
+            id,
+            name
           )
         `)
         .eq('id', id)
         .single();
 
-      if (fetchError) {
-        console.error('Supabase error:', fetchError);
-        if (fetchError.code === 'PGRST116') {
-          setError("Product not found");
-        } else {
-          setError("Failed to load product");
-        }
-        return;
-      }
-
-      if (!data) {
-        setError("Product not found");
-        return;
-      }
-
-      console.log('Product fetched successfully:', data);
+      if (error) throw error;
       setProduct(data);
     } catch (error) {
       console.error('Error fetching product:', error);
-      setError("Failed to load product");
+      toast({
+        title: "Error",
+        description: "Failed to load product details.",
+        variant: "destructive"
+      });
+      navigate('/shop');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleAddToCart = () => {
-    if (product) {
-      addToCart(product.id, quantity);
-      toast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart.`,
-      });
-    }
-  };
+    if (!product) return;
 
-  const handleWishlist = () => {
+    if (quantity > product.stock) {
+      toast({
+        title: "Insufficient Stock",
+        description: `Only ${product.stock} items available in stock.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    addToCart(product, quantity);
     toast({
-      title: "Added to wishlist",
-      description: "Item saved to your wishlist.",
+      title: "Added to Cart",
+      description: `${quantity} x ${product.name} added to your cart.`,
+      variant: "default"
     });
   };
 
-  const calculateDiscount = (price: number, originalPrice?: number) => {
-    if (!originalPrice || originalPrice <= price) return 0;
-    return Math.round(((originalPrice - price) / originalPrice) * 100);
+  const handleWishlist = () => {
+    setIsWishlisted(!isWishlisted);
+    toast({
+      title: isWishlisted ? "Removed from Wishlist" : "Added to Wishlist",
+      description: `${product?.name} ${isWishlisted ? 'removed from' : 'added to'} your wishlist.`,
+      variant: "default"
+    });
   };
 
-  const formatDescription = (text?: string) => {
-    if (!text) return '';
-    
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/__(.*?)__/g, '<u>$1</u>')
-      .replace(/\n/g, '<br />');
+  const handleQuantityChange = (newQuantity: number) => {
+    if (newQuantity >= 1 && newQuantity <= (product?.stock || 0)) {
+      setQuantity(newQuantity);
+    }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 md:h-32 md:w-32 border-b-2 border-rose-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600 text-sm md:text-base">Loading product...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-rose-500"></div>
       </div>
     );
   }
 
-  if (error || !product) {
+  if (!product) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl md:text-2xl font-bold mb-4">{error || "Product not found"}</h2>
-          <Button onClick={() => navigate('/shop')} className="bg-rose-500 hover:bg-rose-600">
+          <h2 className="text-2xl font-bold mb-4">Product Not Found</h2>
+          <Button onClick={() => navigate('/shop')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Shop
           </Button>
         </div>
@@ -164,189 +134,190 @@ const ProductDetail = () => {
     );
   }
 
-  const discount = calculateDiscount(product.price, product.original_price);
-  const productImages = product.images && product.images.length > 0 ? product.images : [product.image_url];
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-2 md:px-4 py-4 md:py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-600 mb-4 md:mb-6 overflow-x-auto">
-          <Button variant="ghost" onClick={() => navigate('/')} className="p-0 h-auto font-normal text-gray-600 hover:text-rose-500 text-xs md:text-sm">
-            Home
-          </Button>
-          <span>/</span>
-          <Button variant="ghost" onClick={() => navigate('/shop')} className="p-0 h-auto font-normal text-gray-600 hover:text-rose-500 text-xs md:text-sm">
-            Shop
-          </Button>
-          {product.categories && (
-            <>
-              <span>/</span>
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate(`/shop?category=${product.categories?.slug}`)} 
-                className="p-0 h-auto font-normal text-gray-600 hover:text-rose-500 capitalize text-xs md:text-sm"
-              >
-                {product.categories.name}
-              </Button>
-            </>
-          )}
-          <span>/</span>
-          <span className="text-gray-900 text-xs md:text-sm truncate">{product.name}</span>
-        </div>
-
-        <Button variant="ghost" onClick={() => navigate('/shop')} className="mb-4 md:mb-6 p-0 text-gray-600 hover:text-rose-500 text-sm">
-          <ArrowLeft className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-8">
+      <div className="container mx-auto px-4">
+        {/* Back Button */}
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/shop')}
+          className="mb-4 sm:mb-6 hover:bg-gray-100"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Shop
         </Button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
-          {/* Product Images */}
-          <div className="space-y-2 md:space-y-4">
-            <div className="relative">
-              <div className="aspect-square w-full max-w-md md:max-w-lg mx-auto overflow-hidden rounded-lg bg-gray-100">
-                <img
-                  src={productImages[selectedImage] || product.image_url}
-                  alt={product.name}
-                  className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
-                />
-                {discount > 0 && (
-                  <Badge className="absolute top-2 md:top-4 left-2 md:left-4 bg-rose-500 text-white text-xs">
-                    -{discount}% OFF
-                  </Badge>
-                )}
-              </div>
-            </div>
-            {productImages.length > 1 && (
-              <div className="grid grid-cols-4 gap-1 md:gap-2 max-w-md md:max-w-lg mx-auto">
-                {productImages.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`border-2 rounded-lg overflow-hidden aspect-square ${
-                      selectedImage === index ? 'border-rose-500' : 'border-gray-200'
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      className="w-full h-full object-contain hover:scale-105 transition-transform bg-gray-50"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 mb-8 lg:mb-12">
+          {/* Product Image */}
+          <div className="space-y-4">
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative group cursor-pointer" onClick={() => setIsImageModalOpen(true)}>
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-64 sm:h-80 lg:h-96 object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                    <ZoomIn className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-8 w-8" />
+                  </div>
+                  <div className="absolute top-2 right-2 sm:top-4 sm:right-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsImageModalOpen(true);
+                      }}
+                      className="bg-white/90 hover:bg-white border-0 shadow-md"
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Mobile: Tap to zoom hint */}
+            <p className="text-xs sm:text-sm text-gray-500 text-center lg:hidden">
+              Tap image to zoom and view in full screen
+            </p>
           </div>
 
-          {/* Product Info */}
-          <div className="space-y-4 md:space-y-6">
+          {/* Product Details */}
+          <div className="space-y-6">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold font-serif mb-2">{product.name}</h1>
-              <p className="text-sm md:text-base text-gray-600">SKU: {product.sku}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <h1 className="text-2xl sm:text-3xl font-bold font-serif text-gray-900">
+                  {product.name}
+                </h1>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleWishlist}
+                  className={`w-fit ${isWishlisted ? 'text-red-500 border-red-500' : 'text-gray-500'}`}
+                >
+                  <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
+                </Button>
+              </div>
+              
               {product.categories && (
-                <p className="text-sm md:text-base text-gray-600 capitalize">{product.categories.name}</p>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 md:gap-4 flex-wrap">
-              <span className="text-2xl md:text-3xl font-bold text-rose-500">
-                PKR {product.price.toLocaleString()}
-              </span>
-              {product.original_price && product.original_price > product.price && (
-                <span className="text-lg md:text-xl text-gray-500 line-through">
-                  PKR {product.original_price.toLocaleString()}
-                </span>
-              )}
-              {discount > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  Save PKR {((product.original_price || 0) - product.price).toLocaleString()}
+                <Badge variant="secondary" className="mb-3">
+                  {product.categories.name}
                 </Badge>
               )}
+
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-2xl sm:text-3xl font-bold text-rose-600">
+                  PKR {product.price.toLocaleString()}
+                </span>
+                {product.original_price && product.original_price > product.price && (
+                  <span className="text-lg text-gray-500 line-through">
+                    PKR {product.original_price.toLocaleString()}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 text-sm text-gray-600 mb-4">
+                <span>SKU: {product.sku}</span>
+                <span className="hidden sm:inline">•</span>
+                <span className={product.stock > 0 ? 'text-green-600' : 'text-red-600'}>
+                  {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                </span>
+              </div>
             </div>
 
             {product.description && (
-              <div 
-                className="text-gray-700 leading-relaxed prose prose-sm max-w-none text-sm md:text-base"
-                dangerouslySetInnerHTML={{ __html: formatDescription(product.description) }}
-              />
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Description</h3>
+                <p className="text-gray-700 leading-relaxed">{product.description}</p>
+              </div>
             )}
 
-            {/* Stock Status */}
-            <div className="flex items-center gap-2">
-              {product.stock > 0 ? (
-                <>
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-green-600 font-medium text-sm md:text-base">In Stock ({product.stock} items)</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full"></div>
-                  <span className="text-red-600 font-medium text-sm md:text-base">Out of Stock</span>
-                </>
-              )}
-            </div>
+            {/* Quantity and Add to Cart */}
+            {product.stock > 0 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Quantity</label>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuantityChange(quantity - 1)}
+                      disabled={quantity <= 1}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      type="number"
+                      min="1"
+                      max={product.stock}
+                      value={quantity}
+                      onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+                      className="w-20 text-center"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuantityChange(quantity + 1)}
+                      disabled={quantity >= product.stock}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-            {/* Quantity Selector */}
-            <div className="flex items-center gap-2 md:gap-4">
-              <label className="font-medium text-sm md:text-base">Quantity:</label>
-              <div className="flex items-center border rounded-lg">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-2 md:px-3 py-1 md:py-2 hover:bg-gray-100 text-sm"
-                  disabled={product.stock === 0}
-                >
-                  -
-                </button>
-                <span className="px-2 md:px-4 py-1 md:py-2 border-x text-sm">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  className="px-2 md:px-3 py-1 md:py-2 hover:bg-gray-100 text-sm"
-                  disabled={product.stock === 0}
-                >
-                  +
-                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Button
+                    onClick={handleAddToCart}
+                    className="bg-rose-500 hover:bg-rose-600 w-full"
+                  >
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Add to Cart
+                  </Button>
+                  <BuyNowButton product={product} quantity={quantity} />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Action Buttons */}
-            <div className="space-y-2 md:space-y-3">
-              <BuyNowButton
-                productId={product.id}
-                className="w-full bg-rose-500 hover:bg-rose-600 text-white py-2 md:py-3 text-sm md:text-lg"
-              />
-              <div className="grid grid-cols-2 gap-2 md:gap-3">
-                <Button
-                  onClick={handleAddToCart}
-                  disabled={product.stock === 0}
-                  variant="outline"
-                  className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
-                >
-                  <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
-                  Add to Cart
-                </Button>
-                <Button
-                  onClick={handleWishlist}
-                  variant="outline"
-                  className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
-                >
-                  <Heart className="h-3 w-3 md:h-4 md:w-4" />
-                  Wishlist
-                </Button>
+            {product.stock === 0 && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-red-800 font-medium">This product is currently out of stock.</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        <RelatedProducts 
-          currentProductId={product.id} 
-          categoryId={product.category_id} 
-        />
-
-        <RandomProducts 
-          currentProductId={product.id} 
-          limit={3}
-        />
+        {/* Related Products */}
+        {product.categories && (
+          <RelatedProducts 
+            categoryId={product.categories.id} 
+            currentProductId={product.id} 
+          />
+        )}
       </div>
+
+      {/* Image Zoom Modal */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-black">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsImageModalOpen(false)}
+              className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
+            >
+              <X className="h-6 w-6" />
+            </Button>
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="max-w-full max-h-full object-contain cursor-zoom-in"
+              style={{ imageRendering: 'high-quality' }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -138,7 +138,8 @@ const Checkout = () => {
           }
         });
         if (paymentError) {
-          throw new Error('Payment service unavailable. Please try Cash on Delivery.');
+          console.error('Payment error:', paymentError);
+          throw new Error('Payment service error. Please try Cash on Delivery.');
         }
         if (paymentData?.fallback_to_cod) {
           // Handle fallback to COD
@@ -236,174 +237,152 @@ const Checkout = () => {
       setIsProcessing(false);
     }
   };
-  return <div className="container mx-auto py-10">
-      <Card className="max-w-2xl mx-auto">
+  return (
+    <div className="container mx-auto px-4 py-6 sm:py-10">
+      <Card className="max-w-4xl mx-auto">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Checkout</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl font-bold">Checkout</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Customer Information */}
             <div>
-              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1">
-                <Package className="w-5 h-5" />
+              <h3 className="text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
+                <Package className="w-4 h-4 sm:w-5 sm:h-5" />
                 Customer Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input type="text" id="name" name="name" value={customerInfo.name} onChange={handleInputChange} placeholder="Enter your full name" required />
+                  <Label htmlFor="name" className="text-sm">Full Name</Label>
+                  <Input type="text" id="name" name="name" value={customerInfo.name} onChange={handleInputChange} placeholder="Enter your full name" required className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input type="email" id="email" name="email" value={customerInfo.email} onChange={handleInputChange} placeholder="Enter your email address" required />
+                  <Label htmlFor="email" className="text-sm">Email Address</Label>
+                  <Input type="email" id="email" name="email" value={customerInfo.email} onChange={handleInputChange} placeholder="Enter your email address" required className="mt-1" />
                 </div>
-                <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input type="tel" id="phone" name="phone" value={customerInfo.phone} onChange={handleInputChange} placeholder="Enter your phone number" required />
+                <div className="md:col-span-1">
+                  <Label htmlFor="phone" className="text-sm">Phone Number</Label>
+                  <Input type="tel" id="phone" name="phone" value={customerInfo.phone} onChange={handleInputChange} placeholder="Enter your phone number" required className="mt-1" />
                 </div>
               </div>
             </div>
 
             {/* Shipping Address */}
             <div>
-              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1">
-                <MapPin className="w-5 h-5" />
+              <h3 className="text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
+                <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
                 Shipping Address
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input type="text" id="address" name="address" value={customerInfo.address} onChange={handleInputChange} placeholder="Enter your street address" required />
+                <div className="md:col-span-2">
+                  <Label htmlFor="address" className="text-sm">Address</Label>
+                  <Input type="text" id="address" name="address" value={customerInfo.address} onChange={handleInputChange} placeholder="Enter your street address" required className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="city">City</Label>
-                  <Input type="text" id="city" name="city" value={customerInfo.city} onChange={handleInputChange} placeholder="Enter your city" required />
+                  <Label htmlFor="city" className="text-sm">City</Label>
+                  <Input type="text" id="city" name="city" value={customerInfo.city} onChange={handleInputChange} placeholder="Enter your city" required className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="province">Province</Label>
-                  <Input type="text" id="province" name="province" value={customerInfo.province} onChange={handleInputChange} placeholder="Enter your province" required />
+                  <Label htmlFor="province" className="text-sm">Province</Label>
+                  <Input type="text" id="province" name="province" value={customerInfo.province} onChange={handleInputChange} placeholder="Enter your province" required className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="country">Country</Label>
-                  <Input type="text" id="country" name="country" value={customerInfo.country} onChange={handleInputChange} placeholder="Enter your country" required />
+                  <Label htmlFor="country" className="text-sm">Country</Label>
+                  <Input type="text" id="country" name="country" value={customerInfo.country} onChange={handleInputChange} placeholder="Enter your country" required className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="postalCode">Postal Code</Label>
-                  <Input type="text" id="postalCode" name="postalCode" value={customerInfo.postalCode} onChange={handleInputChange} placeholder="Enter your postal code" required />
+                  <Label htmlFor="postalCode" className="text-sm">Postal Code</Label>
+                  <Input type="text" id="postalCode" name="postalCode" value={customerInfo.postalCode} onChange={handleInputChange} placeholder="Enter your postal code" required className="mt-1" />
                 </div>
               </div>
             </div>
 
             {/* Order Summary */}
             <div>
-              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1">
-                <ShieldCheck className="w-5 h-5" />
+              <h3 className="text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 Order Summary
               </h3>
-              <div className="border rounded-md p-4">
-                <ul className="space-y-2">
-                  {items.map(item => <li key={item.product.id} className="flex justify-between items-center">
-                      <span>{item.product.name} x {item.quantity}</span>
-                      <span>PKR {(item.product.price * item.quantity).toLocaleString()}</span>
-                    </li>)}
-                </ul>
-                <div className="flex justify-between font-semibold mt-4">
-                  <span>Subtotal</span>
-                  <span>PKR {total.toLocaleString()}</span>
+              <div className="border rounded-md p-4 space-y-3">
+                <div className="max-h-40 overflow-y-auto space-y-2">
+                  {items.map(item => (
+                    <div key={item.product.id} className="flex justify-between items-center text-sm">
+                      <span className="flex-1 pr-2">{item.product.name} x {item.quantity}</span>
+                      <span className="font-medium">PKR {(item.product.price * item.quantity).toLocaleString()}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between font-semibold mt-2">
-                  <span>Shipping</span>
-                  <span>PKR {shippingCharges.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg mt-4">
-                  <span>Total</span>
-                  <span>PKR {(total + shippingCharges).toLocaleString()}</span>
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal</span>
+                    <span>PKR {total.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Shipping</span>
+                    <span>PKR {shippingCharges.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-base border-t pt-2">
+                    <span>Total</span>
+                    <span>PKR {(total + shippingCharges).toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Payment Method */}
             <div>
-              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1">
-                <CreditCard className="w-5 h-5" />
+              <h3 className="text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
                 Payment Method
               </h3>
-              <RadioGroup defaultValue="cod" onValueChange={value => setPaymentMethod(value === 'cod' ? 'cod' : 'online')} className="flex flex-row space-y-2">
+              <RadioGroup defaultValue="cod" onValueChange={value => setPaymentMethod(value === 'cod' ? 'cod' : 'online')} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="cod" id="cod" className="peer sr-only" />
-                  <Label htmlFor="cod" className={cn("cursor-pointer rounded-md border p-4 font-normal shadow-sm transition-colors peer-checked:bg-accent peer-checked:text-accent-foreground peer-checked:ring-1 peer-checked:ring-ring disabled:cursor-not-allowed peer-required:text-red-500", paymentMethod === 'cod' ? "bg-accent text-accent-foreground" : "")}>
-                    Cash on Delivery
+                  <Label htmlFor="cod" className={cn("cursor-pointer rounded-md border p-4 font-normal shadow-sm transition-colors peer-checked:bg-accent peer-checked:text-accent-foreground peer-checked:ring-1 peer-checked:ring-ring w-full text-center", paymentMethod === 'cod' ? "bg-accent text-accent-foreground" : "")}>
+                    💵 Cash on Delivery
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 my-0">
+                <div className="flex items-center space-x-2">
                   <RadioGroupItem value="online" id="online" className="peer sr-only" />
-                  <Label htmlFor="online" className={cn("cursor-pointer rounded-md border p-4 font-normal shadow-sm transition-colors peer-checked:bg-accent peer-checked:text-accent-foreground peer-checked:ring-1 peer-checked:ring-ring disabled:cursor-not-allowed peer-required:text-red-500", paymentMethod === 'online' ? "bg-accent text-accent-foreground" : "")}>
-                    Online Payment
+                  <Label htmlFor="online" className={cn("cursor-pointer rounded-md border p-4 font-normal shadow-sm transition-colors peer-checked:bg-accent peer-checked:text-accent-foreground peer-checked:ring-1 peer-checked:ring-ring w-full text-center", paymentMethod === 'online' ? "bg-accent text-accent-foreground" : "")}>
+                    💳 Online Payment
+                    <div className="text-xs mt-1 opacity-75">Card • JazzCash • EasyPaisa • Bank</div>
                   </Label>
                 </div>
               </RadioGroup>
             </div>
 
             {/* Payment Details (Conditional) */}
-            {paymentMethod === 'online' && <div>
-                <h3 className="text-md font-semibold mb-2">Payment Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="cardNumber">Card Number</Label>
-                    <Input type="text" id="cardNumber" name="cardNumber" placeholder="Enter your card number" onChange={handlePaymentChange} required={paymentMethod === 'online'} />
-                  </div>
-                  <div>
-                    <Label htmlFor="expiryMonth">Expiry Month</Label>
-                    <Select onValueChange={value => setPaymentCredentials(prev => ({
-                  ...prev,
-                  expiryMonth: value
-                }))}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({
-                      length: 12
-                    }, (_, i) => i + 1).map(month => <SelectItem key={month} value={month.toString().padStart(2, '0')}>
-                            {month.toString().padStart(2, '0')}
-                          </SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="expiryYear">Expiry Year</Label>
-                    <Select onValueChange={value => setPaymentCredentials(prev => ({
-                  ...prev,
-                  expiryYear: value
-                }))}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({
-                      length: 10
-                    }, (_, i) => new Date().getFullYear() + i).map(year => <SelectItem key={year} value={year.toString()}>
-                            {year}
-                          </SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="cvv">CVV</Label>
-                    <Input type="text" id="cvv" name="cvv" placeholder="Enter CVV" onChange={handlePaymentChange} required={paymentMethod === 'online'} />
-                  </div>
+            {paymentMethod === 'online' && (
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Payment Details</h3>
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800">
+                  <p className="font-medium">💳 Secure Payment Options Available:</p>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    <li>• Credit/Debit Cards (Visa, MasterCard)</li>
+                    <li>• JazzCash & EasyPaisa</li>
+                    <li>• Online Banking</li>
+                  </ul>
+                  <p className="mt-2 text-xs">You'll be redirected to our secure payment gateway after placing your order.</p>
                 </div>
-              </div>}
+              </div>
+            )}
 
-            <Button disabled={isProcessing} className="w-full bg-rose-500 hover:bg-rose-600">
-              {isProcessing ? <>
+            <Button disabled={isProcessing} className="w-full bg-rose-500 hover:bg-rose-600 py-3 text-base">
+              {isProcessing ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   Processing...
-                </> : "Place Order"}
+                </div>
+              ) : (
+                `Place Order - PKR ${(total + shippingCharges).toLocaleString()}`
+              )}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default Checkout;
