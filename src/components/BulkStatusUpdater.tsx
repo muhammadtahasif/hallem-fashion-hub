@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -103,7 +104,7 @@ const BulkStatusUpdater = ({ orders, onUpdate }: BulkStatusUpdaterProps) => {
     try {
       const orderIds = Array.from(selectedOrders);
 
-      // Delete order items first (foreign key constraint)
+      // First delete order items to handle foreign key constraints
       const { error: itemsError } = await supabase
         .from('order_items')
         .delete()
@@ -131,7 +132,11 @@ const BulkStatusUpdater = ({ orders, onUpdate }: BulkStatusUpdaterProps) => {
       });
 
       setSelectedOrders(new Set());
-      onUpdate();
+      
+      // Force refresh by calling onUpdate
+      setTimeout(() => {
+        onUpdate();
+      }, 100);
 
     } catch (error) {
       console.error('Error deleting orders:', error);

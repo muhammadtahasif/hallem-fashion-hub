@@ -47,18 +47,20 @@ const ProductDetail = () => {
 
   useEffect(() => {
     console.log('ProductDetail mounted, ID from params:', id);
-    if (id) {
-      fetchProduct();
-    } else {
-      console.error('No product ID provided in URL params');
-      setError("No product ID provided");
+    
+    if (!id || id === 'undefined') {
+      console.error('Invalid product ID provided in URL params:', id);
+      setError("Invalid product ID");
       setLoading(false);
+      return;
     }
+    
+    fetchProduct();
   }, [id]);
 
   const fetchProduct = async () => {
-    if (!id) {
-      setError("No product ID provided");
+    if (!id || id === 'undefined') {
+      setError("Invalid product ID");
       setLoading(false);
       return;
     }
@@ -83,7 +85,11 @@ const ProductDetail = () => {
 
       if (fetchError) {
         console.error('Supabase error:', fetchError);
-        setError("Product not found");
+        if (fetchError.code === 'PGRST116') {
+          setError("Product not found");
+        } else {
+          setError("Failed to load product");
+        }
         return;
       }
 

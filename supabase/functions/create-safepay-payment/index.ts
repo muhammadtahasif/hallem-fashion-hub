@@ -33,13 +33,20 @@ serve(async (req) => {
     const apiKey = Deno.env.get('SAFEPAY_API_KEY')
     const secretKey = Deno.env.get('SAFEPAY_SECRET_KEY')
     
+    console.log('SAFEPAY credentials check:', { 
+      hasApiKey: !!apiKey, 
+      hasSecretKey: !!secretKey,
+      apiKeyLength: apiKey?.length || 0,
+      secretKeyLength: secretKey?.length || 0
+    })
+    
     if (!apiKey || !secretKey) {
-      console.error('SAFEPAY credentials not found')
+      console.error('SAFEPAY credentials not found in environment')
       return new Response(
         JSON.stringify({
           success: true,
           fallback_to_cod: true,
-          message: "Online payment service is temporarily unavailable. Your order will be processed as Cash on Delivery."
+          message: "Payment gateway credentials not configured. Your order will be processed as Cash on Delivery."
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -77,17 +84,23 @@ serve(async (req) => {
 
     console.log('Creating SAFEPAY payment with data:', JSON.stringify(paymentData, null, 2))
 
-    // Create payment session with SAFEPAY
+    // Create payment session with SAFEPAY - Extended timeout and better error handling
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+    const timeoutId = setTimeout(() => {
+      console.log('Request timeout - aborting SAFEPAY API call')
+      controller.abort()
+    }, 30000) // 30 second timeout
 
     try {
+      console.log('Making request to SAFEPAY API...')
+      
       const response = await fetch('https://gw.sandbox.safepay.pk/checkout/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-SFPY-MERCHANT-SECRET': secretKey,
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'User-Agent': 'Supabase-Edge-Function/1.0'
         },
         body: JSON.stringify(paymentData),
         signal: controller.signal
@@ -96,8 +109,13 @@ serve(async (req) => {
       clearTimeout(timeoutId)
 
       const responseText = await response.text()
-      console.log('SAFEPAY raw response:', responseText)
-      console.log('SAFEPAY response status:', response.status)
+      console.log('SAFEPAY response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        bodyLength: responseText.length,
+        bodyPreview: responseText.substring(0, 200)
+      })
 
       if (!response.ok) {
         console.error('SAFEPAY API Error Response:', {
@@ -110,7 +128,7 @@ serve(async (req) => {
           JSON.stringify({
             success: true,
             fallback_to_cod: true,
-            message: "Online payment gateway is currently experiencing issues. Your order will be processed as Cash on Delivery."
+            message: `Payment gateway returned error ${response.status}. Your order will be processed as Cash on Delivery.`
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -122,13 +140,15 @@ serve(async (req) => {
       let responseData
       try {
         responseData = JSON.parse(responseText)
+        console.log('SAFEPAY parsed response:', JSON.stringify(responseData, null, 2))
       } catch (parseError) {
-        console.error('Failed to parse SAFEPAY response:', parseError)
+        console.error('Failed to parse SAFEPAY response as JSON:', parseError)
+        console.log('Raw response text:', responseText)
         return new Response(
           JSON.stringify({
             success: true,
             fallback_to_cod: true,
-            message: "Payment service response error. Your order will be processed as Cash on Delivery."
+            message: "Payment gateway returned invalid response. Your order will be processed as Cash on Delivery."
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -137,9 +157,8 @@ serve(async (req) => {
         )
       }
 
-      console.log('SAFEPAY parsed response:', JSON.stringify(responseData, null, 2))
-
       if (responseData.data?.checkout_url) {
+        console.log('SAFEPAY payment session created successfully')
         return new Response(
           JSON.stringify({
             success: true,
@@ -152,12 +171,12 @@ serve(async (req) => {
           }
         )
       } else {
-        console.error('Invalid SAFEPAY response structure:', responseData)
+        console.error('Invalid SAFEPAY response structure - missing checkout_url:', responseData)
         return new Response(
           JSON.stringify({
             success: true,
             fallback_to_cod: true,
-            message: "Payment gateway configuration error. Your order will be processed as Cash on Delivery."
+            message: "Payment gateway response is missing required data. Your order will be processed as Cash on Delivery."
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -168,6 +187,22 @@ serve(async (req) => {
 
     } catch (fetchError) {
       clearTimeout(timeoutId)
+      
+      if (fetchError.name === 'AbortError') {
+        console.error('SAFEPAY API request timed out')
+        return new Response(
+          JSON.stringify({
+            success: true,
+            fallback_to_cod: true,
+            message: "Payment gateway is taking too long to respond. Your order will be processed as Cash on Delivery."
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      }
+      
       console.error('Network error connecting to SAFEPAY:', fetchError)
       
       return new Response(
@@ -189,10 +224,10 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         fallback_to_cod: true,
-        message: "Payment service is temporarily unavailable. Your order will be processed as Cash on Delivery."
+        message: "Payment service encountered an error. Your order will be processed as Cash on Delivery."
       }),
       {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )

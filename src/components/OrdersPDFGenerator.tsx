@@ -6,14 +6,20 @@ import { useToast } from '@/hooks/use-toast';
 
 const generatePDF = async (orders: any[], status: string, toast: any) => {
   try {
+    console.log('Starting PDF generation for', orders.length, 'orders');
+    
     // Dynamic imports for jsPDF
     const jsPDF = (await import('jspdf')).default;
     await import('jspdf-autotable');
+
+    console.log('jsPDF loaded successfully');
 
     // Filter orders by status
     const filteredOrders = orders.filter(order => 
       status === 'all' ? true : order.status.toLowerCase() === status.toLowerCase()
     );
+
+    console.log('Filtered orders:', filteredOrders.length);
 
     if (filteredOrders.length === 0) {
       toast({
@@ -39,7 +45,9 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
 
     let yPosition = 80;
 
-    filteredOrders.forEach((order) => {
+    filteredOrders.forEach((order, index) => {
+      console.log(`Processing order ${index + 1}/${filteredOrders.length}:`, order.order_number);
+      
       // Check if we need a new page
       if (yPosition > 250) {
         pdf.addPage();
@@ -79,16 +87,21 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
         `PKR ${(item.product_price * item.quantity).toLocaleString()}`
       ]);
 
-      (pdf as any).autoTable({
-        startY: yPosition,
-        head: [['Product', 'Qty', 'Unit Price', 'Total']],
-        body: tableData,
-        margin: { left: 20 },
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [220, 220, 220] }
-      });
+      try {
+        (pdf as any).autoTable({
+          startY: yPosition,
+          head: [['Product', 'Qty', 'Unit Price', 'Total']],
+          body: tableData,
+          margin: { left: 20 },
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [220, 220, 220] }
+        });
 
-      yPosition = (pdf as any).lastAutoTable.finalY + 15;
+        yPosition = (pdf as any).lastAutoTable.finalY + 15;
+      } catch (tableError) {
+        console.error('Error creating table for order:', order.order_number, tableError);
+        yPosition += 30; // Skip table and continue
+      }
 
       // Order date
       pdf.setFontSize(8);
@@ -98,18 +111,25 @@ const generatePDF = async (orders: any[], status: string, toast: any) => {
       yPosition += 20;
     });
 
-    // Footer
-    const pageCount = (pdf as any).internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(10);
-      pdf.setTextColor(60, 60, 60);
-      pdf.text(`A&Z Fabrics | Contact: +92 3090449955`, 20, (pdf as any).internal.pageSize.height - 20);
-      pdf.text(`Page ${i} of ${pageCount}`, (pdf as any).internal.pageSize.width - 40, (pdf as any).internal.pageSize.height - 20);
+    // Footer - safely handle page count
+    try {
+      const pageCount = (pdf as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(10);
+        pdf.setTextColor(60, 60, 60);
+        pdf.text(`A&Z Fabrics | Contact: +92 3090449955`, 20, (pdf as any).internal.pageSize.height - 20);
+        pdf.text(`Page ${i} of ${pageCount}`, (pdf as any).internal.pageSize.width - 40, (pdf as any).internal.pageSize.height - 20);
+      }
+    } catch (footerError) {
+      console.error('Error adding footer:', footerError);
     }
 
     // Download PDF
-    pdf.save(`${status}-orders-${new Date().toISOString().split('T')[0]}.pdf`);
+    const fileName = `${status}-orders-${new Date().toISOString().split('T')[0]}.pdf`;
+    console.log('Downloading PDF as:', fileName);
+    
+    pdf.save(fileName);
 
     toast({
       title: "PDF Generated Successfully! 📄",
