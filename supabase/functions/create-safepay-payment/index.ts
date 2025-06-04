@@ -84,139 +84,105 @@ serve(async (req) => {
 
     console.log('Creating SAFEPAY payment with data:', JSON.stringify(paymentData, null, 2))
 
-    // Create payment session with SAFEPAY - Extended timeout and better error handling
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => {
-      console.log('Request timeout - aborting SAFEPAY API call')
-      controller.abort()
-    }, 30000) // 30 second timeout
+    // Try production endpoint first, then fallback to sandbox
+    const endpoints = [
+      'https://api.safepay.pk/checkout/create',
+      'https://gw.safepay.pk/checkout/create',
+      'https://sandbox.api.safepay.pk/checkout/create',
+      'https://gw.sandbox.safepay.pk/checkout/create'
+    ]
 
-    try {
-      console.log('Making request to SAFEPAY API...')
-      
-      const response = await fetch('https://gw.sandbox.safepay.pk/checkout/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-SFPY-MERCHANT-SECRET': secretKey,
-          'Accept': 'application/json',
-          'User-Agent': 'Supabase-Edge-Function/1.0'
-        },
-        body: JSON.stringify(paymentData),
-        signal: controller.signal
-      })
+    let lastError = null
+    
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying SAFEPAY endpoint: ${endpoint}`)
+        
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => {
+          console.log(`Request timeout for ${endpoint} - aborting`)
+          controller.abort()
+        }, 15000) // 15 second timeout per endpoint
 
-      clearTimeout(timeoutId)
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-SFPY-MERCHANT-SECRET': secretKey,
+            'Accept': 'application/json',
+            'User-Agent': 'Supabase-Edge-Function/1.0'
+          },
+          body: JSON.stringify(paymentData),
+          signal: controller.signal
+        })
 
-      const responseText = await response.text()
-      console.log('SAFEPAY response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        bodyLength: responseText.length,
-        bodyPreview: responseText.substring(0, 200)
-      })
+        clearTimeout(timeoutId)
 
-      if (!response.ok) {
-        console.error('SAFEPAY API Error Response:', {
+        const responseText = await response.text()
+        console.log(`SAFEPAY response from ${endpoint}:`, {
           status: response.status,
           statusText: response.statusText,
-          body: responseText
+          bodyLength: responseText.length,
+          bodyPreview: responseText.substring(0, 200)
         })
-        
-        return new Response(
-          JSON.stringify({
-            success: true,
-            fallback_to_cod: true,
-            message: `Payment gateway returned error ${response.status}. Your order will be processed as Cash on Delivery.`
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        )
-      }
 
-      let responseData
-      try {
-        responseData = JSON.parse(responseText)
-        console.log('SAFEPAY parsed response:', JSON.stringify(responseData, null, 2))
-      } catch (parseError) {
-        console.error('Failed to parse SAFEPAY response as JSON:', parseError)
-        console.log('Raw response text:', responseText)
-        return new Response(
-          JSON.stringify({
-            success: true,
-            fallback_to_cod: true,
-            message: "Payment gateway returned invalid response. Your order will be processed as Cash on Delivery."
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
+        if (response.ok) {
+          let responseData
+          try {
+            responseData = JSON.parse(responseText)
+            console.log('SAFEPAY parsed response:', JSON.stringify(responseData, null, 2))
+          } catch (parseError) {
+            console.error('Failed to parse SAFEPAY response as JSON:', parseError)
+            continue // Try next endpoint
           }
-        )
-      }
 
-      if (responseData.data?.checkout_url) {
-        console.log('SAFEPAY payment session created successfully')
-        return new Response(
-          JSON.stringify({
-            success: true,
-            checkout_url: responseData.data.checkout_url,
-            session_token: responseData.data.session_uuid || responseData.data.token
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
+          if (responseData.data?.checkout_url) {
+            console.log('SAFEPAY payment session created successfully')
+            return new Response(
+              JSON.stringify({
+                success: true,
+                checkout_url: responseData.data.checkout_url,
+                session_token: responseData.data.session_uuid || responseData.data.token
+              }),
+              {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+              }
+            )
           }
-        )
-      } else {
-        console.error('Invalid SAFEPAY response structure - missing checkout_url:', responseData)
-        return new Response(
-          JSON.stringify({
-            success: true,
-            fallback_to_cod: true,
-            message: "Payment gateway response is missing required data. Your order will be processed as Cash on Delivery."
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        )
-      }
-
-    } catch (fetchError) {
-      clearTimeout(timeoutId)
-      
-      if (fetchError.name === 'AbortError') {
-        console.error('SAFEPAY API request timed out')
-        return new Response(
-          JSON.stringify({
-            success: true,
-            fallback_to_cod: true,
-            message: "Payment gateway is taking too long to respond. Your order will be processed as Cash on Delivery."
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        )
-      }
-      
-      console.error('Network error connecting to SAFEPAY:', fetchError)
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          fallback_to_cod: true,
-          message: "Unable to connect to payment gateway. Your order will be processed as Cash on Delivery."
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+        } else {
+          console.error(`SAFEPAY API Error from ${endpoint}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            body: responseText
+          })
+          lastError = `${endpoint}: ${response.status} ${response.statusText}`
         }
-      )
+
+      } catch (fetchError) {
+        console.error(`Network error with ${endpoint}:`, fetchError)
+        lastError = `${endpoint}: ${fetchError.message}`
+        
+        if (fetchError.name === 'AbortError') {
+          console.log(`Request to ${endpoint} timed out`)
+        }
+        continue // Try next endpoint
+      }
     }
+
+    // If all endpoints failed
+    console.error('All SAFEPAY endpoints failed. Last error:', lastError)
+    return new Response(
+      JSON.stringify({
+        success: true,
+        fallback_to_cod: true,
+        message: "Payment gateway is currently unavailable. Your order will be processed as Cash on Delivery."
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
 
   } catch (error) {
     console.error('Error creating SAFEPAY payment:', error)

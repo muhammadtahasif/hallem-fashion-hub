@@ -21,10 +21,22 @@ interface Product {
   subcategory_id?: string;
   featured: boolean;
   stock: number;
+  categories?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 const Shop = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,29 +45,45 @@ const Shop = () => {
   const { addToCart } = useCart();
   const { toast } = useToast();
 
-  const categoryId = searchParams.get('category');
+  const categorySlug = searchParams.get('category');
 
   useEffect(() => {
+    fetchCategories();
     fetchProducts();
   }, []);
 
   useEffect(() => {
     filterProducts();
-  }, [products, searchTerm, selectedSubcategories, categoryId]);
+  }, [products, searchTerm, selectedSubcategories, categorySlug, categories]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          categories (
+            id,
+            name,
+            slug
+          )
+        `)
         .gt('stock', 0)
         .order('created_at', { ascending: false });
-
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
       setProducts(data || []);
@@ -69,9 +97,12 @@ const Shop = () => {
   const filterProducts = () => {
     let filtered = products;
 
-    // Filter by category if specified
-    if (categoryId) {
-      filtered = filtered.filter(product => product.category_id === categoryId);
+    // Filter by category slug if specified
+    if (categorySlug && categories.length > 0) {
+      const selectedCategory = categories.find(cat => cat.slug === categorySlug);
+      if (selectedCategory) {
+        filtered = filtered.filter(product => product.category_id === selectedCategory.id);
+      }
     }
 
     // Filter by search term
@@ -109,19 +140,19 @@ const Shop = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 md:h-12 md:w-12 border-b-2 border-rose-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold font-serif mb-8">Shop</h1>
+    <div className="min-h-screen bg-gray-50 py-4 md:py-8">
+      <div className="container mx-auto px-2 md:px-4">
+        <h1 className="text-2xl md:text-3xl font-bold font-serif mb-4 md:mb-8">Shop</h1>
 
         {/* Search Bar */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
@@ -129,30 +160,30 @@ const Shop = () => {
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 text-sm"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
             <SubcategoryFilterProfessional
               selectedSubcategories={selectedSubcategories}
               onSubcategoryChange={setSelectedSubcategories}
-              selectedCategory={categoryId || undefined}
+              selectedCategory={categorySlug ? categories.find(cat => cat.slug === categorySlug)?.id : undefined}
             />
           </div>
 
           {/* Products Grid */}
           <div className="lg:col-span-3">
             <div className="mb-4 flex justify-between items-center">
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-sm md:text-base">
                 Showing {filteredProducts.length} of {products.length} products
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="group hover:shadow-lg transition-shadow">
                   <CardContent className="p-0">
@@ -165,27 +196,27 @@ const Shop = () => {
                         />
                       </div>
                     </Link>
-                    <div className="p-4">
+                    <div className="p-3 md:p-4">
                       <div className="flex items-center justify-between mb-2">
                         <Link to={`/product/${product.id}`}>
-                          <h3 className="font-semibold text-lg hover:text-rose-500 transition-colors">
+                          <h3 className="font-semibold text-sm md:text-lg hover:text-rose-500 transition-colors line-clamp-2">
                             {product.name}
                           </h3>
                         </Link>
                         {product.featured && (
-                          <Badge variant="secondary">
-                            <Star className="w-3 h-3 mr-1" />
+                          <Badge variant="secondary" className="text-xs">
+                            <Star className="w-2 h-2 md:w-3 md:h-3 mr-1" />
                             Featured
                           </Badge>
                         )}
                       </div>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-lg font-bold text-rose-500">
+                        <div className="flex items-center space-x-1 md:space-x-2">
+                          <span className="text-sm md:text-lg font-bold text-rose-500">
                             PKR {product.price.toLocaleString()}
                           </span>
                           {product.original_price && product.original_price > product.price && (
-                            <span className="text-sm text-gray-500 line-through">
+                            <span className="text-xs md:text-sm text-gray-500 line-through">
                               PKR {product.original_price.toLocaleString()}
                             </span>
                           )}
@@ -193,9 +224,9 @@ const Shop = () => {
                         <Button
                           size="sm"
                           onClick={() => handleAddToCart(product)}
-                          className="bg-rose-500 hover:bg-rose-600"
+                          className="bg-rose-500 hover:bg-rose-600 text-xs px-2 py-1 md:px-3 md:py-2"
                         >
-                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          <ShoppingCart className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                           Add
                         </Button>
                       </div>
@@ -207,8 +238,8 @@ const Shop = () => {
 
             {filteredProducts.length === 0 && (
               <div className="text-center py-12">
-                <h3 className="text-xl font-semibold mb-2">No products found</h3>
-                <p className="text-gray-600">Try adjusting your search or filter criteria.</p>
+                <h3 className="text-lg md:text-xl font-semibold mb-2">No products found</h3>
+                <p className="text-gray-600 text-sm md:text-base">Try adjusting your search or filter criteria.</p>
               </div>
             )}
           </div>
