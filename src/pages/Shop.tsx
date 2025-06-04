@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import SubcategoryFilterProfessional from "@/components/SubcategoryFilterProfessional";
+import CategoryFilter from "@/components/CategoryFilter";
 
 interface Product {
   id: string;
@@ -40,6 +41,7 @@ const Shop = () => {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
@@ -53,8 +55,18 @@ const Shop = () => {
   }, []);
 
   useEffect(() => {
+    // Set category from URL params
+    if (categorySlug && categories.length > 0) {
+      const selectedCategory = categories.find(cat => cat.slug === categorySlug);
+      if (selectedCategory) {
+        setSelectedCategoryId(selectedCategory.id);
+      }
+    }
+  }, [categorySlug, categories]);
+
+  useEffect(() => {
     filterProducts();
-  }, [products, searchTerm, selectedSubcategories, categorySlug, categories]);
+  }, [products, searchTerm, selectedCategoryId, selectedSubcategories]);
 
   const fetchCategories = async () => {
     try {
@@ -97,12 +109,9 @@ const Shop = () => {
   const filterProducts = () => {
     let filtered = products;
 
-    // Filter by category slug if specified
-    if (categorySlug && categories.length > 0) {
-      const selectedCategory = categories.find(cat => cat.slug === categorySlug);
-      if (selectedCategory) {
-        filtered = filtered.filter(product => product.category_id === selectedCategory.id);
-      }
+    // Filter by selected category
+    if (selectedCategoryId) {
+      filtered = filtered.filter(product => product.category_id === selectedCategoryId);
     }
 
     // Filter by search term
@@ -167,17 +176,22 @@ const Shop = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8">
           {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            <CategoryFilter
+              selectedCategoryId={selectedCategoryId}
+              onCategorySelect={setSelectedCategoryId}
+            />
+            
             <SubcategoryFilterProfessional
               selectedSubcategories={selectedSubcategories}
               onSubcategoryChange={setSelectedSubcategories}
-              selectedCategory={categorySlug ? categories.find(cat => cat.slug === categorySlug)?.id : undefined}
+              selectedCategory={selectedCategoryId}
             />
           </div>
 
           {/* Products Grid */}
           <div className="lg:col-span-3">
-            <div className="mb-4 flex justify-between items-center">
+            <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <p className="text-gray-600 text-sm md:text-base">
                 Showing {filteredProducts.length} of {products.length} products
               </p>
@@ -197,20 +211,20 @@ const Shop = () => {
                       </div>
                     </Link>
                     <div className="p-3 md:p-4">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-start justify-between mb-2 gap-2">
                         <Link to={`/product/${product.id}`}>
                           <h3 className="font-semibold text-sm md:text-lg hover:text-rose-500 transition-colors line-clamp-2">
                             {product.name}
                           </h3>
                         </Link>
                         {product.featured && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">
                             <Star className="w-2 h-2 md:w-3 md:h-3 mr-1" />
                             Featured
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                         <div className="flex items-center space-x-1 md:space-x-2">
                           <span className="text-sm md:text-lg font-bold text-rose-500">
                             PKR {product.price.toLocaleString()}
@@ -224,7 +238,7 @@ const Shop = () => {
                         <Button
                           size="sm"
                           onClick={() => handleAddToCart(product)}
-                          className="bg-rose-500 hover:bg-rose-600 text-xs px-2 py-1 md:px-3 md:py-2"
+                          className="bg-rose-500 hover:bg-rose-600 text-xs px-2 py-1 md:px-3 md:py-2 w-full sm:w-auto"
                         >
                           <ShoppingCart className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                           Add

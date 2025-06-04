@@ -7,7 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -23,30 +22,29 @@ serve(async (req) => {
       description 
     } = await req.json()
 
-    console.log('Received payment request:', { orderId, amount, currency, customerEmail, customerName, customerPhone, description })
+    console.log('Payment request received:', { orderId, amount, currency, customerEmail, customerName, customerPhone })
 
     if (!orderId || !amount) {
       throw new Error('Missing required parameters: orderId and amount')
     }
 
-    // Get SAFEPAY credentials
     const apiKey = Deno.env.get('SAFEPAY_API_KEY')
     const secretKey = Deno.env.get('SAFEPAY_SECRET_KEY')
     
-    console.log('SAFEPAY credentials check:', { 
+    console.log('SAFEPAY credentials status:', { 
       hasApiKey: !!apiKey, 
       hasSecretKey: !!secretKey,
-      apiKeyLength: apiKey?.length || 0,
-      secretKeyLength: secretKey?.length || 0
+      apiKeyPrefix: apiKey?.substring(0, 8) + '...',
+      secretKeyPrefix: secretKey?.substring(0, 8) + '...'
     })
     
     if (!apiKey || !secretKey) {
-      console.error('SAFEPAY credentials not found in environment')
+      console.error('SAFEPAY credentials missing')
       return new Response(
         JSON.stringify({
           success: true,
           fallback_to_cod: true,
-          message: "Payment gateway credentials not configured. Your order will be processed as Cash on Delivery."
+          message: "Payment gateway credentials not configured. Processing as Cash on Delivery."
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -55,16 +53,16 @@ serve(async (req) => {
       )
     }
 
-    // Parse phone number to extract country code and number
+    // Clean phone number
     const phoneMatch = customerPhone?.match(/^(\+\d{1,3})\s*(.+)/)
     const countryCode = phoneMatch ? phoneMatch[1] : '+92'
-    const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\s/g, '') : customerPhone?.replace(/\s/g, '') || ''
+    const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\D/g, '') : customerPhone?.replace(/\D/g, '') || ''
 
     const paymentData = {
       intent: "CYBERSOURCE",
       mode: "payment",
       currency: currency || "PKR",
-      amount: Math.round(amount * 100), // Convert to paisa/cents
+      amount: Math.round(amount * 100),
       customer: {
         name: customerName || "Customer",
         email: customerEmail || "customer@example.com",
@@ -73,8 +71,8 @@ serve(async (req) => {
           number: phoneNumber
         }
       },
-      success_url: `https://preview--hallem-fashion-hub.lovable.app/checkout/success?order_id=${orderId}`,
-      cancel_url: `https://preview--hallem-fashion-hub.lovable.app/checkout/cancel?order_id=${orderId}`,
+      success_url: `${req.headers.get('origin') || 'https://preview--hallem-fashion-hub.lovable.app'}/checkout/success?order_id=${orderId}`,
+      cancel_url: `${req.headers.get('origin') || 'https://preview--hallem-fashion-hub.lovable.app'}/checkout/cancel?order_id=${orderId}`,
       webhook_url: `https://jrnotkitoiiwikswpmdt.supabase.co/functions/v1/safepay-webhook`,
       metadata: {
         order_id: orderId,
@@ -82,27 +80,24 @@ serve(async (req) => {
       }
     }
 
-    console.log('Creating SAFEPAY payment with data:', JSON.stringify(paymentData, null, 2))
+    console.log('Creating SAFEPAY payment session with data:', JSON.stringify(paymentData, null, 2))
 
-    // Try production endpoint first, then fallback to sandbox
+    // Try multiple endpoints with better error handling
     const endpoints = [
       'https://api.safepay.pk/checkout/create',
       'https://gw.safepay.pk/checkout/create',
-      'https://sandbox.api.safepay.pk/checkout/create',
-      'https://gw.sandbox.safepay.pk/checkout/create'
+      'https://sandbox.api.safepay.pk/checkout/create'
     ]
 
-    let lastError = null
-    
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying SAFEPAY endpoint: ${endpoint}`)
+        console.log(`Attempting SAFEPAY endpoint: ${endpoint}`)
         
         const controller = new AbortController()
         const timeoutId = setTimeout(() => {
-          console.log(`Request timeout for ${endpoint} - aborting`)
+          console.log(`Timeout reached for ${endpoint}`)
           controller.abort()
-        }, 15000) // 15 second timeout per endpoint
+        }, 20000) // 20 second timeout
 
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -110,7 +105,7 @@ serve(async (req) => {
             'Content-Type': 'application/json',
             'X-SFPY-MERCHANT-SECRET': secretKey,
             'Accept': 'application/json',
-            'User-Agent': 'Supabase-Edge-Function/1.0'
+            'User-Agent': 'Lovable-AZ-Fabrics/1.0'
           },
           body: JSON.stringify(paymentData),
           signal: controller.signal
@@ -122,33 +117,40 @@ serve(async (req) => {
         console.log(`SAFEPAY response from ${endpoint}:`, {
           status: response.status,
           statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
           bodyLength: responseText.length,
-          bodyPreview: responseText.substring(0, 200)
+          body: responseText
         })
 
         if (response.ok) {
           let responseData
           try {
             responseData = JSON.parse(responseText)
-            console.log('SAFEPAY parsed response:', JSON.stringify(responseData, null, 2))
           } catch (parseError) {
-            console.error('Failed to parse SAFEPAY response as JSON:', parseError)
-            continue // Try next endpoint
+            console.error('Failed to parse response as JSON:', parseError)
+            continue
           }
 
-          if (responseData.data?.checkout_url) {
-            console.log('SAFEPAY payment session created successfully')
+          if (responseData?.data?.checkout_url || responseData?.checkout_url) {
+            const checkoutUrl = responseData.data?.checkout_url || responseData.checkout_url
+            const sessionToken = responseData.data?.session_uuid || responseData.data?.token || responseData.session_uuid || responseData.token
+            
+            console.log('SAFEPAY payment session created successfully:', { checkoutUrl, sessionToken })
+            
             return new Response(
               JSON.stringify({
                 success: true,
-                checkout_url: responseData.data.checkout_url,
-                session_token: responseData.data.session_uuid || responseData.data.token
+                checkout_url: checkoutUrl,
+                session_token: sessionToken
               }),
               {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200,
               }
             )
+          } else {
+            console.error('Checkout URL not found in response:', responseData)
+            continue
           }
         } else {
           console.error(`SAFEPAY API Error from ${endpoint}:`, {
@@ -156,27 +158,35 @@ serve(async (req) => {
             statusText: response.statusText,
             body: responseText
           })
-          lastError = `${endpoint}: ${response.status} ${response.statusText}`
+          
+          // If it's a 4xx error, it might be credential or data issues
+          if (response.status >= 400 && response.status < 500) {
+            break // Don't try other endpoints for client errors
+          }
+          continue
         }
 
       } catch (fetchError) {
-        console.error(`Network error with ${endpoint}:`, fetchError)
-        lastError = `${endpoint}: ${fetchError.message}`
+        console.error(`Network error with ${endpoint}:`, {
+          name: fetchError.name,
+          message: fetchError.message,
+          stack: fetchError.stack
+        })
         
         if (fetchError.name === 'AbortError') {
-          console.log(`Request to ${endpoint} timed out`)
+          console.log(`Request to ${endpoint} was aborted due to timeout`)
         }
-        continue // Try next endpoint
+        continue
       }
     }
 
-    // If all endpoints failed
-    console.error('All SAFEPAY endpoints failed. Last error:', lastError)
+    // All endpoints failed - provide fallback
+    console.error('All SAFEPAY endpoints failed, falling back to COD')
     return new Response(
       JSON.stringify({
         success: true,
         fallback_to_cod: true,
-        message: "Payment gateway is currently unavailable. Your order will be processed as Cash on Delivery."
+        message: "Online payment is temporarily unavailable. Your order will be processed as Cash on Delivery."
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -185,7 +195,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error creating SAFEPAY payment:', error)
+    console.error('Critical error in payment processing:', error)
     return new Response(
       JSON.stringify({
         success: true,
