@@ -336,7 +336,7 @@ const Checkout = () => {
                     Cash on Delivery
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 my-0">
                   <RadioGroupItem value="online" id="online" className="peer sr-only" />
                   <Label htmlFor="online" className={cn("cursor-pointer rounded-md border p-4 font-normal shadow-sm transition-colors peer-checked:bg-accent peer-checked:text-accent-foreground peer-checked:ring-1 peer-checked:ring-ring disabled:cursor-not-allowed peer-required:text-red-500", paymentMethod === 'online' ? "bg-accent text-accent-foreground" : "")}>
                     Online Payment
