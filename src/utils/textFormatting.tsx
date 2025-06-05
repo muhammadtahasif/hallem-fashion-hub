@@ -1,4 +1,6 @@
 
+import React from 'react';
+
 export const formatDescription = (description: string): JSX.Element[] => {
   if (!description) return [];
   
