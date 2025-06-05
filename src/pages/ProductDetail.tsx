@@ -5,13 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Minus, Plus, ShoppingCart, Heart, ArrowLeft, ZoomIn, X } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Heart, ArrowLeft } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import BuyNowButton from "@/components/BuyNowButton";
 import RelatedProducts from "@/components/RelatedProducts";
+import ProductImageGallery from "@/components/ProductImageGallery";
+import { formatDescription } from "@/utils/textFormatting";
 
 interface Product {
   id: string;
@@ -21,6 +22,7 @@ interface Product {
   original_price?: number;
   stock: number;
   image_url: string;
+  images?: string[];
   featured: boolean;
   sku: string;
   categories?: {
@@ -38,8 +40,6 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-  const [imageScale, setImageScale] = useState(1);
 
   useEffect(() => {
     if (id) {
@@ -113,29 +113,6 @@ const ProductDetail = () => {
     }
   };
 
-  const handleImageZoom = (event: React.WheelEvent) => {
-    event.preventDefault();
-    const delta = event.deltaY > 0 ? -0.1 : 0.1;
-    setImageScale(prev => Math.max(1, Math.min(3, prev + delta)));
-  };
-
-  const handleImageClick = () => {
-    setImageScale(prev => prev >= 3 ? 1 : prev + 0.5);
-  };
-
-  const resetZoom = () => {
-    setImageScale(1);
-  };
-
-  const formatDescription = (description: string) => {
-    return description.split('\n').map((line, index) => (
-      <span key={index}>
-        {line}
-        {index < description.split('\n').length - 1 && <br />}
-      </span>
-    ));
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -172,39 +149,16 @@ const ProductDetail = () => {
         </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 mb-8 lg:mb-12">
-          {/* Product Image */}
-          <div className="space-y-4">
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative group cursor-pointer" onClick={() => setIsImageModalOpen(true)}>
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
-                    style={{ maxHeight: '500px' }}
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
-                    <ZoomIn className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-8 w-8" />
-                  </div>
-                  <div className="absolute top-2 right-2 sm:top-4 sm:right-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsImageModalOpen(true);
-                      }}
-                      className="bg-white/90 hover:bg-white border-0 shadow-md"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Product Images */}
+          <div>
+            <ProductImageGallery
+              mainImage={product.image_url}
+              additionalImages={product.images}
+              productName={product.name}
+            />
             
             {/* Mobile: Tap to zoom hint */}
-            <p className="text-xs sm:text-sm text-gray-500 text-center lg:hidden">
+            <p className="text-xs sm:text-sm text-gray-500 text-center mt-2 lg:hidden">
               Tap image to zoom and view in full screen
             </p>
           </div>
@@ -255,7 +209,7 @@ const ProductDetail = () => {
             {product.description && (
               <div>
                 <h3 className="text-lg font-semibold mb-2">Description</h3>
-                <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                <div className="text-gray-700 leading-relaxed">
                   {formatDescription(product.description)}
                 </div>
               </div>
@@ -316,51 +270,11 @@ const ProductDetail = () => {
         </div>
 
         {/* Related Products */}
-        {product.categories && (
-          <RelatedProducts 
-            categoryId={product.categories.id} 
-            currentProductId={product.id} 
-          />
-        )}
+        <RelatedProducts 
+          categoryId={product.categories?.id} 
+          currentProductId={product.id} 
+        />
       </div>
-
-      {/* Image Zoom Modal */}
-      <Dialog open={isImageModalOpen} onOpenChange={(open) => {
-        setIsImageModalOpen(open);
-        if (!open) resetZoom();
-      }}>
-        <DialogContent className="max-w-5xl w-full h-[90vh] p-2 bg-white border-none">
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-white rounded-lg">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsImageModalOpen(false)}
-              className="absolute top-2 right-2 z-10 text-gray-600 hover:bg-gray-100 bg-white/80"
-            >
-              <X className="h-6 w-6" />
-            </Button>
-            <div className="text-xs text-gray-600 absolute top-2 left-2 z-10 bg-white/90 p-2 rounded shadow-sm">
-              Click to zoom • Scroll to zoom in/out • Scale: {Math.round(imageScale * 100)}%
-            </div>
-            <div className="w-full h-full flex items-center justify-center overflow-hidden">
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="max-w-none cursor-pointer transition-transform duration-200 select-none"
-                style={{ 
-                  transform: `scale(${imageScale})`,
-                  transformOrigin: 'center',
-                  maxHeight: imageScale === 1 ? '100%' : 'none',
-                  maxWidth: imageScale === 1 ? '100%' : 'none'
-                }}
-                onClick={handleImageClick}
-                onWheel={handleImageZoom}
-                draggable={false}
-              />
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

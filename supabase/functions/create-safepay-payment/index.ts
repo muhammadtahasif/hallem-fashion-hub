@@ -33,8 +33,16 @@ serve(async (req) => {
       paymentType: paymentDetails?.paymentType
     })
 
-    if (!orderId || !amount) {
-      throw new Error('Missing required parameters: orderId and amount')
+    // Validate required parameters
+    if (!orderId || !amount || amount <= 0) {
+      console.error('Invalid request parameters:', { orderId, amount })
+      throw new Error('Missing or invalid required parameters: orderId and amount must be provided and amount must be greater than 0')
+    }
+
+    // Validate customer information
+    if (!customerName || !customerEmail) {
+      console.error('Missing customer information:', { customerName, customerEmail })
+      throw new Error('Customer name and email are required')
     }
 
     const apiKey = Deno.env.get('SAFEPAY_API_KEY')
@@ -62,20 +70,32 @@ serve(async (req) => {
       )
     }
 
-    // Clean phone number
-    const phoneMatch = customerPhone?.match(/^(\+\d{1,3})\s*(.+)/)
-    const countryCode = phoneMatch ? phoneMatch[1] : '+92'
-    const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\D/g, '') : customerPhone?.replace(/\D/g, '') || ''
+    // Clean and validate phone number
+    let countryCode = '+92'
+    let phoneNumber = ''
+    
+    if (customerPhone) {
+      const phoneMatch = customerPhone.match(/^(\+\d{1,3})\s*(.+)/)
+      countryCode = phoneMatch ? phoneMatch[1] : '+92'
+      phoneNumber = phoneMatch ? phoneMatch[2].replace(/\D/g, '') : customerPhone.replace(/\D/g, '')
+      
+      // Ensure phone number has at least 10 digits
+      if (phoneNumber.length < 10) {
+        phoneNumber = '0000000000'
+      }
+    } else {
+      phoneNumber = '0000000000'
+    }
 
     // Build payment data based on payment type
     let paymentData = {
       intent: "CYBERSOURCE",
       mode: "payment",
       currency: currency || "PKR",
-      amount: Math.round(amount * 100),
+      amount: Math.round(amount * 100), // Convert to paisas
       customer: {
-        name: customerName || "Customer",
-        email: customerEmail || "customer@example.com",
+        name: customerName,
+        email: customerEmail,
         phone: {
           country_code: countryCode,
           number: phoneNumber
@@ -102,7 +122,9 @@ serve(async (req) => {
           break
         case 'bank':
           paymentData.metadata.preferred_method = 'bank_transfer'
-          paymentData.metadata.bank_name = paymentDetails.bankName
+          if (paymentDetails.bankName) {
+            paymentData.metadata.bank_name = paymentDetails.bankName
+          }
           break
         case 'card':
         default:
@@ -118,19 +140,20 @@ serve(async (req) => {
     
     console.log(`Using SAFEPAY sandbox endpoint: ${endpoint}`)
     
-    // Add retry logic
+    // Enhanced retry logic with better error handling
     let response
     let lastError
+    const maxRetries = 3
     
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`Payment attempt ${attempt}/3`)
+        console.log(`Payment attempt ${attempt}/${maxRetries}`)
         
         const controller = new AbortController()
         const timeoutId = setTimeout(() => {
-          console.log(`Timeout reached for attempt ${attempt}`)
+          console.log(`Request timeout reached for attempt ${attempt}`)
           controller.abort()
-        }, 15000) // 15 second timeout per attempt
+        }, 30000) // 30 second timeout per attempt
 
         response = await fetch(endpoint, {
           method: 'POST',
@@ -145,31 +168,40 @@ serve(async (req) => {
         })
         
         clearTimeout(timeoutId)
+        console.log(`Attempt ${attempt} completed with status: ${response.status}`)
         break // Success, exit retry loop
         
       } catch (fetchError) {
         lastError = fetchError
-        console.error(`Attempt ${attempt} failed:`, fetchError)
+        console.error(`Attempt ${attempt} failed:`, {
+          error: fetchError.message,
+          name: fetchError.name,
+          stack: fetchError.stack
+        })
         
-        if (attempt === 3) {
-          throw new Error(`Payment gateway connection failed after 3 attempts: ${lastError.message}`)
+        if (attempt === maxRetries) {
+          console.error(`All ${maxRetries} attempts failed. Last error:`, lastError)
+          throw new Error(`Payment gateway connection failed after ${maxRetries} attempts: ${lastError.message}`)
         }
         
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+        // Exponential backoff: wait longer between retries
+        const waitTime = 1000 * Math.pow(2, attempt - 1) // 1s, 2s, 4s
+        console.log(`Waiting ${waitTime}ms before retry ${attempt + 1}`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
       }
     }
 
     if (!response) {
-      throw new Error('Failed to get response from payment gateway')
+      throw new Error('Failed to get response from payment gateway after all retries')
     }
 
     const responseText = await response.text()
     console.log(`SAFEPAY response:`, {
       status: response.status,
       statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
       bodyLength: responseText.length,
-      body: responseText.substring(0, 1000)
+      body: responseText.substring(0, 2000) // Log more of the response for debugging
     })
 
     if (response.ok) {
@@ -178,14 +210,29 @@ serve(async (req) => {
         responseData = JSON.parse(responseText)
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', parseError)
-        throw new Error('Invalid response format from payment gateway')
+        console.error('Raw response:', responseText)
+        throw new Error('Invalid JSON response from payment gateway')
       }
 
-      if (responseData?.data?.checkout_url || responseData?.checkout_url) {
-        const checkoutUrl = responseData.data?.checkout_url || responseData.checkout_url
-        const sessionToken = responseData.data?.session_uuid || responseData.data?.token || responseData.session_uuid || responseData.token
-        
-        console.log('SAFEPAY payment session created successfully:', { checkoutUrl, sessionToken })
+      // Handle different response structures
+      const checkoutUrl = responseData?.data?.checkout_url || 
+                         responseData?.checkout_url || 
+                         responseData?.data?.url ||
+                         responseData?.url
+
+      const sessionToken = responseData?.data?.session_uuid || 
+                          responseData?.data?.token || 
+                          responseData?.session_uuid || 
+                          responseData?.token ||
+                          responseData?.data?.id ||
+                          responseData?.id
+
+      if (checkoutUrl) {
+        console.log('SAFEPAY payment session created successfully:', { 
+          checkoutUrl, 
+          sessionToken,
+          paymentType: paymentDetails?.paymentType || 'card'
+        })
         
         return new Response(
           JSON.stringify({
@@ -201,40 +248,63 @@ serve(async (req) => {
         )
       } else {
         console.error('Checkout URL not found in response:', responseData)
-        throw new Error('Payment session creation failed - invalid response structure')
+        throw new Error('Payment session creation failed - checkout URL not found in response')
       }
     } else {
       console.error(`SAFEPAY API Error:`, {
         status: response.status,
         statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
         body: responseText
       })
       
+      // Parse error response if possible
+      let errorDetails = responseText
+      try {
+        const errorData = JSON.parse(responseText)
+        errorDetails = errorData.message || errorData.error || responseText
+      } catch (e) {
+        // Use raw response text if not JSON
+      }
+      
       // Return specific error based on status code
       let errorMessage = 'Payment gateway error'
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
         errorMessage = 'Payment gateway authentication failed - please check credentials'
       } else if (response.status >= 500) {
         errorMessage = 'Payment gateway server temporarily unavailable'
       } else if (response.status === 400) {
-        errorMessage = 'Invalid payment request - please check details'
+        errorMessage = `Invalid payment request: ${errorDetails}`
+      } else if (response.status === 422) {
+        errorMessage = `Payment validation failed: ${errorDetails}`
       }
       
       throw new Error(`${errorMessage} (Status: ${response.status})`)
     }
 
   } catch (error) {
-    console.error('Error in payment processing:', error)
+    console.error('Error in payment processing:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name
+    })
     
+    // Determine if this is a temporary error that should allow COD fallback
+    const isTemporaryError = error.message.includes('connection failed') || 
+                            error.message.includes('timeout') ||
+                            error.message.includes('server temporarily unavailable') ||
+                            error.message.includes('network')
+
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message || 'Payment processing failed',
-        fallback_to_cod: true
+        fallback_to_cod: isTemporaryError,
+        error_type: isTemporaryError ? 'temporary' : 'permanent'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        status: 200, // Return 200 to avoid browser errors, handle error in frontend
       }
     )
   }

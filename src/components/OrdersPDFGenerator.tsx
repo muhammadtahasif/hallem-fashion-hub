@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -47,50 +48,48 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
       const textDark: [number, number, number] = [31, 41, 55]; // Gray 800
       const textMuted: [number, number, number] = [107, 114, 128]; // Gray 500
 
-      // Header section with improved design
+      // Header section
       doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.rect(0, 0, pageWidth, 30, 'F');
       
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('A&Z FABRICS', 15, 22);
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Premium Fashion Collection', 15, 30);
-      
-      // Contact info in header
-      doc.setFontSize(9);
-      const contactY = 22;
-      doc.text('📞 +923234882256', pageWidth - 55, contactY);
-      doc.text('✉️ digitaleyemedia25@gmail.com', pageWidth - 55, contactY + 6);
-
-      // Report title with styling
-      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text(title, 15, 50);
+      doc.text('A&Z FABRICS', 15, 18);
+      
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Premium Fashion Collection', 15, 25);
+      
+      // Contact info in header
+      doc.setFontSize(7);
+      doc.text('📞 +923234882256 | ✉️ digitaleyemedia25@gmail.com', pageWidth - 80, 20);
+
+      // Report title
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, 15, 42);
       
       // Date and summary info
-      doc.setFontSize(10);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
       const currentDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric'
       });
-      doc.text(`Generated on: ${currentDate}`, 15, 58);
-      doc.text(`Total Orders: ${orders.length}`, 15, 66);
+      doc.text(`Generated: ${currentDate}`, 15, 50);
+      doc.text(`Total Orders: ${orders.length}`, 15, 56);
       
       const totalRevenue = orders.reduce((sum, order) => sum + order.total_amount, 0);
-      doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 15, 74);
+      doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 15, 62);
 
       // Decorative line
-      doc.setLineWidth(0.5);
+      doc.setLineWidth(0.3);
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.line(15, 80, pageWidth - 15, 80);
+      doc.line(15, 68, pageWidth - 15, 68);
 
       // Table data preparation
       const tableData = orders.map((order, index) => [
@@ -98,45 +97,46 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
         order.order_number,
         order.customer_name,
         order.customer_phone,
+        order.customer_address.length > 25 ? order.customer_address.substring(0, 25) + '...' : order.customer_address,
         `PKR ${order.total_amount.toLocaleString()}`,
         order.status.charAt(0).toUpperCase() + order.status.slice(1),
         new Date(order.created_at).toLocaleDateString('en-US', {
           day: '2-digit',
-          month: 'short',
-          year: 'numeric'
+          month: 'short'
         })
       ]);
 
-      // Enhanced table with professional styling
+      // Enhanced table with smaller, more readable styling
       autoTable(doc, {
-        head: [['#', 'Order ID', 'Customer', 'Phone', 'Amount', 'Status', 'Date']],
+        head: [['#', 'Order ID', 'Customer', 'Phone', 'Address', 'Amount', 'Status', 'Date']],
         body: tableData,
-        startY: 88,
+        startY: 75,
         theme: 'grid',
         headStyles: {
           fillColor: headerBgColor,
           textColor: textDark,
           fontStyle: 'bold',
-          fontSize: 9,
-          cellPadding: { top: 8, right: 5, bottom: 8, left: 5 },
-          lineColor: borderColor,
-          lineWidth: 0.5,
-        },
-        bodyStyles: {
-          fontSize: 8,
-          cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
+          fontSize: 7,
+          cellPadding: { top: 4, right: 2, bottom: 4, left: 2 },
           lineColor: borderColor,
           lineWidth: 0.3,
+        },
+        bodyStyles: {
+          fontSize: 6,
+          cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
+          lineColor: borderColor,
+          lineWidth: 0.2,
           textColor: textDark,
         },
         columnStyles: {
-          0: { cellWidth: 12, halign: 'center' }, // #
-          1: { cellWidth: 35, fontStyle: 'bold' }, // Order ID
-          2: { cellWidth: 40 }, // Customer
-          3: { cellWidth: 35 }, // Phone
-          4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }, // Amount
-          5: { cellWidth: 25, halign: 'center' }, // Status
-          6: { cellWidth: 28, halign: 'center' }, // Date
+          0: { cellWidth: 8, halign: 'center' }, // #
+          1: { cellWidth: 22, fontStyle: 'bold', fontSize: 6 }, // Order ID
+          2: { cellWidth: 25, fontSize: 6 }, // Customer
+          3: { cellWidth: 22, fontSize: 6 }, // Phone
+          4: { cellWidth: 30, fontSize: 5 }, // Address
+          5: { cellWidth: 20, halign: 'right', fontStyle: 'bold', fontSize: 6 }, // Amount
+          6: { cellWidth: 18, halign: 'center', fontSize: 6 }, // Status
+          7: { cellWidth: 15, halign: 'center', fontSize: 6 }, // Date
         },
         alternateRowStyles: {
           fillColor: [252, 252, 252] // Very light gray
@@ -144,7 +144,7 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
         margin: { left: 15, right: 15 },
         didDrawCell: (data) => {
           // Add status badges with colors
-          if (data.column.index === 5 && data.cell.section === 'body') {
+          if (data.column.index === 6 && data.cell.section === 'body') {
             const status = data.cell.text[0].toLowerCase();
             let statusColor: [number, number, number];
             
@@ -171,16 +171,16 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
             // Draw colored background for status
             doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
             doc.roundedRect(
-              data.cell.x + 2, 
-              data.cell.y + 2, 
-              data.cell.width - 4, 
-              data.cell.height - 4, 
-              2, 2, 'F'
+              data.cell.x + 1, 
+              data.cell.y + 1, 
+              data.cell.width - 2, 
+              data.cell.height - 2, 
+              1, 1, 'F'
             );
             
             // Add status text with white color
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(7);
+            doc.setFontSize(5);
             doc.setFont('helvetica', 'bold');
             doc.text(
               data.cell.text[0], 
@@ -192,30 +192,30 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
         }
       });
 
-      // Footer with enhanced design
-      const finalY = (doc as any).lastAutoTable.finalY + 20;
-      if (finalY < pageHeight - 30) {
+      // Footer with summary
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      if (finalY < pageHeight - 25) {
         // Summary box
         doc.setFillColor(headerBgColor[0], headerBgColor[1], headerBgColor[2]);
-        doc.roundedRect(15, finalY, pageWidth - 30, 25, 3, 3, 'F');
+        doc.roundedRect(15, finalY, pageWidth - 30, 20, 2, 2, 'F');
         
         doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(15, finalY, pageWidth - 30, 25, 3, 3, 'S');
+        doc.setLineWidth(0.3);
+        doc.roundedRect(15, finalY, pageWidth - 30, 20, 2, 2, 'S');
         
         doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
         doc.text('Summary', 20, finalY + 8);
         
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.text(`Total Orders: ${orders.length}`, 20, finalY + 16);
-        doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 20, finalY + 22);
+        doc.setFontSize(7);
+        doc.text(`Total Orders: ${orders.length}`, 20, finalY + 14);
+        doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 20, finalY + 18);
         
         // Average order value
         const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
-        doc.text(`Average Order Value: PKR ${Math.round(avgOrderValue).toLocaleString()}`, pageWidth - 80, finalY + 16);
+        doc.text(`Avg Order: PKR ${Math.round(avgOrderValue).toLocaleString()}`, pageWidth - 50, finalY + 14);
         
         // Order status distribution
         const statusCounts = orders.reduce((acc, order) => {
@@ -228,17 +228,16 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
           statusText += `${status}: ${count}`;
           if (index < Object.entries(statusCounts).length - 1) statusText += ', ';
         });
-        doc.text(statusText, pageWidth - 80, finalY + 22);
+        doc.text(statusText, pageWidth - 50, finalY + 18);
       }
 
       // Page footer
-      doc.setFontSize(8);
+      doc.setFontSize(6);
       doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
-      doc.text('A&Z Fabrics - Premium Fashion Collection', pageWidth / 2, pageHeight - 15, { align: 'center' });
-      doc.text('This is a computer-generated document.', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text('A&Z Fabrics - This is a computer-generated document.', pageWidth / 2, pageHeight - 10, { align: 'center' });
       
       // Page numbering
-      doc.text(`Page 1 of 1`, pageWidth - 20, pageHeight - 10);
+      doc.text(`Page 1`, pageWidth - 15, pageHeight - 8);
 
       // Save the PDF
       const fileName = `${title.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;

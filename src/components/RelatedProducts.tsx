@@ -30,24 +30,50 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
 
   const fetchRelatedProducts = async () => {
     try {
+      setLoading(true);
+      
+      // First try to get products from the same category
       let query = supabase
         .from('products')
         .select('id, name, price, original_price, image_url, slug')
         .neq('id', currentProductId)
-        .limit(4);
+        .gt('stock', 0)
+        .limit(8);
 
       if (categoryId) {
         query = query.eq('category_id', categoryId);
       }
 
-      const { data, error } = await query;
+      const { data: categoryProducts, error: categoryError } = await query;
 
-      if (error) {
-        console.error('Error fetching related products:', error);
-        return;
+      if (categoryError) {
+        console.error('Error fetching category products:', categoryError);
       }
 
-      setRelatedProducts(data || []);
+      let products = categoryProducts || [];
+
+      // If we don't have enough products from the same category, get random products
+      if (products.length < 4) {
+        const { data: randomProducts, error: randomError } = await supabase
+          .from('products')
+          .select('id, name, price, original_price, image_url, slug')
+          .neq('id', currentProductId)
+          .gt('stock', 0)
+          .limit(8 - products.length);
+
+        if (randomError) {
+          console.error('Error fetching random products:', randomError);
+        } else if (randomProducts) {
+          // Filter out products that are already in the category products
+          const existingIds = products.map(p => p.id);
+          const additionalProducts = randomProducts.filter(p => !existingIds.includes(p.id));
+          products = [...products, ...additionalProducts];
+        }
+      }
+
+      // Shuffle and take only 4 products
+      const shuffledProducts = products.sort(() => 0.5 - Math.random()).slice(0, 4);
+      setRelatedProducts(shuffledProducts);
     } catch (error) {
       console.error('Error fetching related products:', error);
     } finally {
@@ -77,7 +103,12 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
   }
 
   if (relatedProducts.length === 0) {
-    return null;
+    return (
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold font-serif mb-8">Related Products</h2>
+        <p className="text-gray-500 text-center py-8">No related products found.</p>
+      </div>
+    );
   }
 
   return (
