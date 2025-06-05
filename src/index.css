@@ -130,32 +130,51 @@
       padding-right: 0.75rem;
     }
     
-    .text-responsive {
-      font-size: 0.875rem;
-    }
-    
-    .heading-responsive {
-      font-size: 1.25rem;
+    /* Product detail improvements */
+    .product-detail-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
     }
 
-    /* Mobile-specific card adjustments */
-    .mobile-card {
-      margin-bottom: 0.75rem;
+    .product-image-gallery {
+      margin-bottom: 1rem;
     }
 
-    .mobile-grid {
+    .product-actions {
+      flex-direction: column;
       gap: 0.75rem;
+    }
+
+    .quantity-controls {
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    /* Mobile image gallery */
+    .image-thumbnails {
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .image-thumbnail {
+      flex-shrink: 0;
+      width: 60px;
+      height: 60px;
+    }
+
+    /* Mobile modal improvements */
+    .modal-content {
+      margin: 0.5rem;
+      width: calc(100% - 1rem);
+      max-height: calc(100vh - 1rem);
     }
 
     /* Better button sizing on mobile */
     .mobile-button {
-      padding: 0.5rem 0.75rem;
+      padding: 0.75rem 1rem;
       font-size: 0.875rem;
-    }
-
-    /* Mobile navigation improvements */
-    .mobile-nav {
-      padding: 0.5rem;
+      min-height: 44px;
     }
 
     /* Mobile form improvements */
@@ -163,7 +182,35 @@
     .mobile-form select,
     .mobile-form textarea {
       padding: 0.75rem;
-      font-size: 1rem; /* Prevents zoom on iOS */
+      font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    /* Product card improvements */
+    .product-card {
+      margin-bottom: 1rem;
+    }
+
+    .product-card img {
+      height: 200px;
+      object-fit: cover;
+    }
+
+    /* Payment method cards */
+    .payment-method-card {
+      padding: 1rem;
+      text-align: center;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Responsive tables */
+    .responsive-table {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .responsive-table table {
+      min-width: 100%;
+      white-space: nowrap;
     }
   }
 
@@ -174,41 +221,32 @@
       gap: 1rem;
     }
 
-    .tablet-card {
-      margin-bottom: 1rem;
+    .product-detail-tablet {
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
     }
 
-    .tablet-text {
-      font-size: 0.9375rem;
+    /* Tablet image gallery */
+    .image-gallery-tablet {
+      max-height: 400px;
     }
 
-    .tablet-button {
-      padding: 0.625rem 1rem;
+    .image-thumbnails-tablet {
+      gap: 0.75rem;
     }
 
-    /* Tablet-specific navigation */
-    .tablet-nav {
-      padding: 0.5rem 1rem;
-    }
-
-    /* Better spacing for tablet */
-    .tablet-spacing {
-      gap: 1rem;
-    }
-
-    /* Tablet form improvements */
-    .tablet-form {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
+    .image-thumbnail-tablet {
+      width: 80px;
+      height: 80px;
     }
 
     /* Admin panel tablet fixes */
-    .admin-tabs {
+    .admin-tabs-tablet {
       flex-wrap: wrap;
       gap: 0.25rem;
     }
 
-    .admin-tab {
+    .admin-tab-tablet {
       flex: 1 1 auto;
       min-width: fit-content;
       padding: 0.5rem 0.75rem;
@@ -216,44 +254,49 @@
     }
   }
 
-  @media (min-width: 768px) {
-    .text-responsive {
-      font-size: 1rem;
+  /* Large screen optimizations */
+  @media (min-width: 1025px) {
+    .product-detail-desktop {
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
     }
-    
-    .heading-responsive {
-      font-size: 1.5rem;
+
+    .image-gallery-desktop {
+      max-height: 600px;
+    }
+
+    .image-thumbnails-desktop {
+      gap: 1rem;
+    }
+
+    .image-thumbnail-desktop {
+      width: 100px;
+      height: 100px;
     }
   }
 
-  /* Improved touch targets for mobile */
+  /* Touch target improvements for mobile */
   @media (max-width: 768px) {
     button, .btn, a[role="button"] {
-      min-height: 44px; /* Apple's recommended touch target size */
+      min-height: 44px;
       min-width: 44px;
     }
 
-    /* Better spacing for mobile content */
-    .mobile-spacing > * + * {
-      margin-top: 1rem;
+    /* Image gallery touch improvements */
+    .image-navigation-btn {
+      min-width: 48px;
+      min-height: 48px;
     }
 
-    /* Mobile-friendly tables */
-    .mobile-table {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+    .zoom-btn {
+      min-width: 40px;
+      min-height: 40px;
     }
 
-    .mobile-table table {
-      min-width: 100%;
-      white-space: nowrap;
-    }
-
-    /* Mobile modal improvements */
-    .mobile-modal {
-      margin: 0.5rem;
-      width: calc(100% - 1rem);
-      max-height: calc(100vh - 1rem);
+    /* Modal navigation improvements */
+    .modal-nav-btn {
+      min-width: 52px;
+      min-height: 52px;
     }
 
     /* Prevent zoom on input focus */
@@ -262,12 +305,13 @@
     input[type="tel"],
     input[type="password"],
     input[type="search"],
+    input[type="number"],
     textarea,
     select {
       font-size: 16px !important;
     }
 
-    /* Mobile checkout improvements */
+    /* Checkout improvements */
     .checkout-form {
       padding: 1rem;
       gap: 1.5rem;
@@ -276,41 +320,51 @@
     .payment-option {
       padding: 1rem;
       text-align: center;
+      border-radius: 8px;
     }
-  }
 
-  /* High DPI screen optimizations */
-  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    .high-dpi-text {
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+    /* Cart improvements */
+    .cart-item {
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
     }
-  }
 
-  /* Landscape orientation for tablets */
-  @media (orientation: landscape) and (max-height: 768px) {
-    .landscape-adjust {
-      height: auto;
-      max-height: 90vh;
+    .cart-quantity-controls {
+      gap: 0.5rem;
+      justify-content: center;
     }
   }
 
   /* Safe area insets for notched devices */
   @supports (padding: max(0px)) {
-    .safe-area-inset-top {
+    .safe-area-top {
       padding-top: max(1rem, env(safe-area-inset-top));
     }
 
-    .safe-area-inset-bottom {
+    .safe-area-bottom {
       padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
 
-    .safe-area-inset-left {
+    .safe-area-left {
       padding-left: max(1rem, env(safe-area-inset-left));
     }
 
-    .safe-area-inset-right {
+    .safe-area-right {
       padding-right: max(1rem, env(safe-area-inset-right));
+    }
+  }
+
+  /* High DPI improvements */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .high-dpi-text {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .product-image {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
     }
   }
 
@@ -331,106 +385,30 @@
     height: auto;
   }
 
-  /* Responsive iframe/video embeds */
-  .responsive-embed {
-    position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
+  /* Loading states */
+  .loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
   }
 
-  .responsive-embed iframe,
-  .responsive-embed video {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  /* Admin dashboard responsive improvements */
-  @media (max-width: 1024px) {
-    .admin-content {
-      padding: 1rem;
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
     }
-
-    .admin-card {
-      margin-bottom: 1rem;
-    }
-
-    .admin-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-
-    .admin-button-group {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .admin-button-group button {
-      width: 100%;
-      justify-content: center;
+    100% {
+      background-position: -200% 0;
     }
   }
 
-  /* Product detail responsive improvements */
-  @media (max-width: 768px) {
-    .product-detail-grid {
-      grid-template-columns: 1fr;
-      gap: 2rem;
+  /* Print styles */
+  @media print {
+    .no-print {
+      display: none !important;
     }
-
-    .product-image {
-      height: 300px;
-    }
-
-    .product-actions {
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .quantity-controls {
-      justify-content: center;
-    }
-  }
-
-  /* Better category grid for mobile */
-  @media (max-width: 640px) {
-    .category-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-
-    .category-card {
-      margin-bottom: 1rem;
-    }
-
-    .category-image {
-      height: 200px;
-    }
-  }
-
-  /* Shopping page responsive improvements */
-  @media (max-width: 768px) {
-    .shop-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-
-    .product-card {
-      margin-bottom: 1rem;
-    }
-
-    .filter-sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 50;
-      background: white;
-      overflow-y: auto;
+    
+    .print-break {
+      page-break-after: always;
     }
   }
 }

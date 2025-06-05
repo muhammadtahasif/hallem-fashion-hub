@@ -15,7 +15,9 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [imageScale, setImageScale] = useState(1);
 
-  const allImages = [mainImage, ...additionalImages].filter(Boolean);
+  // Filter out empty/null images and avoid duplicates
+  const uniqueImages = Array.from(new Set([mainImage, ...additionalImages].filter(Boolean)));
+  const hasMultipleImages = uniqueImages.length > 1;
 
   const handleImageClick = () => {
     setIsModalOpen(true);
@@ -28,13 +30,13 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
 
   const handlePrevImage = () => {
     setSelectedImageIndex((prev) => 
-      prev === 0 ? allImages.length - 1 : prev - 1
+      prev === 0 ? uniqueImages.length - 1 : prev - 1
     );
   };
 
   const handleNextImage = () => {
     setSelectedImageIndex((prev) => 
-      prev === allImages.length - 1 ? 0 : prev + 1
+      prev === uniqueImages.length - 1 ? 0 : prev + 1
     );
   };
 
@@ -53,14 +55,13 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
       {/* Main Image */}
       <div className="relative group cursor-pointer" onClick={handleImageClick}>
         <img
-          src={allImages[selectedImageIndex]}
+          src={uniqueImages[selectedImageIndex]}
           alt={productName}
           className="w-full h-auto object-contain rounded-lg transition-transform duration-300 group-hover:scale-105"
-          style={{ maxHeight: '500px' }}
+          style={{ maxHeight: '500px', width: '100%', height: 'auto' }}
         />
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center rounded-lg">
-          <ZoomIn className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-8 w-8" />
-        </div>
+        
+        {/* Zoom button - only show this, no overlay guide */}
         <div className="absolute top-2 right-2">
           <Button
             variant="outline"
@@ -75,8 +76,8 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
           </Button>
         </div>
         
-        {/* Navigation arrows for main image */}
-        {allImages.length > 1 && (
+        {/* Navigation arrows for main image - only show if multiple images */}
+        {hasMultipleImages && (
           <>
             <Button
               variant="outline"
@@ -96,7 +97,7 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
                 e.stopPropagation();
                 handleNextImage();
               }}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white border-0 shadow-md"
+              className="absolute right-12 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white border-0 shadow-md"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -104,15 +105,15 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
         )}
       </div>
 
-      {/* Thumbnail Images */}
-      {allImages.length > 1 && (
+      {/* Thumbnail Images - only show if there are multiple images */}
+      {hasMultipleImages && (
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {allImages.map((image, index) => (
+          {uniqueImages.map((image, index) => (
             <img
               key={index}
               src={image}
               alt={`${productName} ${index + 1}`}
-              className={`w-20 h-20 object-cover rounded-md cursor-pointer border-2 transition-all ${
+              className={`w-20 h-20 object-cover rounded-md cursor-pointer border-2 transition-all flex-shrink-0 ${
                 selectedImageIndex === index 
                   ? 'border-rose-500 opacity-100' 
                   : 'border-gray-200 opacity-70 hover:opacity-100'
@@ -143,8 +144,8 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
               Click to zoom • Scroll to zoom in/out • Scale: {Math.round(imageScale * 100)}%
             </div>
             
-            {/* Modal Navigation */}
-            {allImages.length > 1 && (
+            {/* Modal Navigation - only show if multiple images */}
+            {hasMultipleImages && (
               <>
                 <Button
                   variant="outline"
@@ -161,14 +162,14 @@ const ProductImageGallery = ({ mainImage, additionalImages = [], productName }: 
                   <ChevronRight className="h-6 w-6" />
                 </Button>
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 bg-white/90 px-3 py-1 rounded text-sm">
-                  {selectedImageIndex + 1} / {allImages.length}
+                  {selectedImageIndex + 1} / {uniqueImages.length}
                 </div>
               </>
             )}
             
             <div className="w-full h-full flex items-center justify-center overflow-hidden">
               <img
-                src={allImages[selectedImageIndex]}
+                src={uniqueImages[selectedImageIndex]}
                 alt={productName}
                 className="max-w-none cursor-pointer transition-transform duration-200 select-none"
                 style={{ 
