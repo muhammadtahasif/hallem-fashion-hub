@@ -89,7 +89,7 @@ const ProductDetail = () => {
       return;
     }
 
-    addToCart(product, quantity);
+    addToCart(product.id, quantity);
     toast({
       title: "Added to Cart",
       description: `${quantity} x ${product.name} added to your cart.`,
@@ -275,7 +275,7 @@ const ProductDetail = () => {
                     <ShoppingCart className="mr-2 h-4 w-4" />
                     Add to Cart
                   </Button>
-                  <BuyNowButton product={product} quantity={quantity} />
+                  <BuyNowButton productId={product.id} className="w-full" />
                 </div>
               </div>
             )}
@@ -313,7 +313,7 @@ const ProductDetail = () => {
               src={product.image_url}
               alt={product.name}
               className="max-w-full max-h-full object-contain cursor-zoom-in"
-              style={{ imageRendering: 'high-quality' }}
+              style={{ imageRendering: 'crisp-edges' }}
             />
           </div>
         </DialogContent>

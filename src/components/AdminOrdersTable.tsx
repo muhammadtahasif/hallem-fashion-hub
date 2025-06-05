@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -119,6 +118,9 @@ const AdminOrdersTable = () => {
     return <div className="text-center py-8">Loading orders...</div>;
   }
 
+  // Filter orders for pending status
+  const pendingOrders = orders.filter(order => order.status === 'pending');
+
   return (
     <div className="space-y-6">
       {/* Header with Action Buttons */}
@@ -130,8 +132,8 @@ const AdminOrdersTable = () => {
               Order Management & Reports
             </CardTitle>
             <div className="flex flex-wrap gap-2">
-              <OrdersPDFGenerator orders={orders} status="pending" />
-              <OrdersPDFGenerator orders={orders} status="all" />
+              <OrdersPDFGenerator orders={pendingOrders} title="Pending Orders Report" />
+              <OrdersPDFGenerator orders={orders} title="All Orders Report" />
               <Button
                 onClick={() => setShowBulkUpdater(!showBulkUpdater)}
                 variant="outline"
