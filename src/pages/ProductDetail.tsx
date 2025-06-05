@@ -39,6 +39,7 @@ const ProductDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [imageScale, setImageScale] = useState(1);
 
   useEffect(() => {
     if (id) {
@@ -110,6 +111,16 @@ const ProductDetail = () => {
     if (newQuantity >= 1 && newQuantity <= (product?.stock || 0)) {
       setQuantity(newQuantity);
     }
+  };
+
+  const handleImageZoom = (event: React.WheelEvent) => {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? -0.1 : 0.1;
+    setImageScale(prev => Math.max(1, Math.min(3, prev + delta)));
+  };
+
+  const handleImageClick = () => {
+    setImageScale(prev => prev >= 3 ? 1 : prev + 0.5);
   };
 
   if (isLoading) {
@@ -299,21 +310,29 @@ const ProductDetail = () => {
 
       {/* Image Zoom Modal */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-        <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-black">
-          <div className="relative w-full h-full flex items-center justify-center">
+        <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-white">
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsImageModalOpen(false)}
-              className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
+              className="absolute top-4 right-4 z-10 text-gray-600 hover:bg-gray-100"
             >
               <X className="h-6 w-6" />
             </Button>
+            <div className="text-xs text-gray-500 absolute top-4 left-4 z-10 bg-white/80 p-2 rounded">
+              Click to zoom • Scroll to zoom in/out
+            </div>
             <img
               src={product.image_url}
               alt={product.name}
-              className="max-w-full max-h-full object-contain cursor-zoom-in"
-              style={{ imageRendering: 'crisp-edges' }}
+              className="max-w-full max-h-full object-contain cursor-pointer transition-transform"
+              style={{ 
+                transform: `scale(${imageScale})`,
+                transformOrigin: 'center'
+              }}
+              onClick={handleImageClick}
+              onWheel={handleImageZoom}
             />
           </div>
         </DialogContent>

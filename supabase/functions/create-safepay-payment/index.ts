@@ -19,10 +19,19 @@ serve(async (req) => {
       customerEmail, 
       customerName, 
       customerPhone, 
-      description 
+      description,
+      paymentDetails
     } = await req.json()
 
-    console.log('Payment request received:', { orderId, amount, currency, customerEmail, customerName, customerPhone })
+    console.log('Payment request received:', { 
+      orderId, 
+      amount, 
+      currency, 
+      customerEmail, 
+      customerName, 
+      customerPhone,
+      paymentType: paymentDetails?.paymentType
+    })
 
     if (!orderId || !amount) {
       throw new Error('Missing required parameters: orderId and amount')
@@ -39,12 +48,12 @@ serve(async (req) => {
     })
     
     if (!apiKey || !secretKey) {
-      console.error('SAFEPAY credentials missing')
+      console.error('SAFEPAY credentials missing - redirecting to COD')
       return new Response(
         JSON.stringify({
-          success: true,
-          fallback_to_cod: true,
-          message: "Payment gateway credentials not configured. Processing as Cash on Delivery."
+          success: false,
+          error: "Payment gateway temporarily unavailable. Please use Cash on Delivery option.",
+          fallback_to_cod: true
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -58,7 +67,8 @@ serve(async (req) => {
     const countryCode = phoneMatch ? phoneMatch[1] : '+92'
     const phoneNumber = phoneMatch ? phoneMatch[2].replace(/\D/g, '') : customerPhone?.replace(/\D/g, '') || ''
 
-    const paymentData = {
+    // Build payment data based on payment type
+    let paymentData = {
       intent: "CYBERSOURCE",
       mode: "payment",
       currency: currency || "PKR",
@@ -76,7 +86,28 @@ serve(async (req) => {
       webhook_url: `https://jrnotkitoiiwikswpmdt.supabase.co/functions/v1/safepay-webhook`,
       metadata: {
         order_id: orderId,
-        description: description || `Order ${orderId}`
+        description: description || `Order ${orderId}`,
+        payment_type: paymentDetails?.paymentType || 'card'
+      }
+    }
+
+    // Add payment method specific configurations
+    if (paymentDetails?.paymentType) {
+      switch (paymentDetails.paymentType) {
+        case 'jazzcash':
+          paymentData.metadata.preferred_method = 'jazzcash'
+          break
+        case 'easypaisa':
+          paymentData.metadata.preferred_method = 'easypaisa'
+          break
+        case 'bank':
+          paymentData.metadata.preferred_method = 'bank_transfer'
+          paymentData.metadata.bank_name = paymentDetails.bankName
+          break
+        case 'card':
+        default:
+          paymentData.metadata.preferred_method = 'card'
+          break
       }
     }
 
@@ -93,17 +124,23 @@ serve(async (req) => {
       controller.abort()
     }, 30000) // 30 second timeout
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-SFPY-MERCHANT-SECRET': secretKey,
-        'Accept': 'application/json',
-        'User-Agent': 'AZ-Fabrics/1.0'
-      },
-      body: JSON.stringify(paymentData),
-      signal: controller.signal
-    })
+    let response
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SFPY-MERCHANT-SECRET': secretKey,
+          'Accept': 'application/json',
+          'User-Agent': 'AZ-Fabrics/1.0'
+        },
+        body: JSON.stringify(paymentData),
+        signal: controller.signal
+      })
+    } catch (fetchError) {
+      console.error('Fetch error:', fetchError)
+      throw new Error('Unable to connect to payment gateway')
+    }
 
     clearTimeout(timeoutId)
 
@@ -113,7 +150,7 @@ serve(async (req) => {
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries()),
       bodyLength: responseText.length,
-      body: responseText
+      body: responseText.substring(0, 1000) // Log first 1000 chars
     })
 
     if (response.ok) {
@@ -135,7 +172,8 @@ serve(async (req) => {
           JSON.stringify({
             success: true,
             checkout_url: checkoutUrl,
-            session_token: sessionToken
+            session_token: sessionToken,
+            payment_type: paymentDetails?.paymentType || 'card'
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -144,7 +182,7 @@ serve(async (req) => {
         )
       } else {
         console.error('Checkout URL not found in response:', responseData)
-        throw new Error('Payment session creation failed')
+        throw new Error('Payment session creation failed - no checkout URL returned')
       }
     } else {
       console.error(`SAFEPAY API Error from ${endpoint}:`, {
@@ -153,16 +191,28 @@ serve(async (req) => {
         body: responseText
       })
       
-      throw new Error(`Payment gateway error: ${response.status}`)
+      // Return specific error based on status code
+      let errorMessage = 'Payment gateway error'
+      if (response.status === 401) {
+        errorMessage = 'Payment gateway authentication failed'
+      } else if (response.status >= 500) {
+        errorMessage = 'Payment gateway server error'
+      } else if (response.status === 400) {
+        errorMessage = 'Invalid payment request'
+      }
+      
+      throw new Error(`${errorMessage}: ${response.status}`)
     }
 
   } catch (error) {
     console.error('Error in payment processing:', error)
+    
+    // Return success false so frontend can handle the error appropriately
     return new Response(
       JSON.stringify({
-        success: true,
-        fallback_to_cod: true,
-        message: "Online payment is temporarily unavailable. Your order will be processed as Cash on Delivery."
+        success: false,
+        error: error.message || 'Payment processing failed',
+        fallback_to_cod: true
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
