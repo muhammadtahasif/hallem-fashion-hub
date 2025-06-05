@@ -48,11 +48,11 @@ serve(async (req) => {
     })
     
     if (!apiKey || !secretKey) {
-      console.error('SAFEPAY credentials missing - redirecting to COD')
+      console.error('SAFEPAY credentials missing')
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Payment gateway temporarily unavailable. Please use Cash on Delivery option.",
+          error: "Payment gateway configuration missing. Please contact support.",
           fallback_to_cod: true
         }),
         {
@@ -113,44 +113,63 @@ serve(async (req) => {
 
     console.log('Creating SAFEPAY payment session with data:', JSON.stringify(paymentData, null, 2))
 
-    // Use sandbox endpoint for testing
+    // Use sandbox endpoint
     const endpoint = 'https://sandbox.api.safepay.pk/checkout/create'
     
     console.log(`Using SAFEPAY sandbox endpoint: ${endpoint}`)
     
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => {
-      console.log(`Timeout reached for ${endpoint}`)
-      controller.abort()
-    }, 30000) // 30 second timeout
-
+    // Add retry logic
     let response
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-SFPY-MERCHANT-SECRET': secretKey,
-          'Accept': 'application/json',
-          'User-Agent': 'AZ-Fabrics/1.0'
-        },
-        body: JSON.stringify(paymentData),
-        signal: controller.signal
-      })
-    } catch (fetchError) {
-      console.error('Fetch error:', fetchError)
-      throw new Error('Unable to connect to payment gateway')
+    let lastError
+    
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`Payment attempt ${attempt}/3`)
+        
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => {
+          console.log(`Timeout reached for attempt ${attempt}`)
+          controller.abort()
+        }, 15000) // 15 second timeout per attempt
+
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-SFPY-MERCHANT-SECRET': secretKey,
+            'Accept': 'application/json',
+            'User-Agent': 'Hallem-Fashion-Hub/1.0'
+          },
+          body: JSON.stringify(paymentData),
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        break // Success, exit retry loop
+        
+      } catch (fetchError) {
+        lastError = fetchError
+        console.error(`Attempt ${attempt} failed:`, fetchError)
+        
+        if (attempt === 3) {
+          throw new Error(`Payment gateway connection failed after 3 attempts: ${lastError.message}`)
+        }
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
     }
 
-    clearTimeout(timeoutId)
+    if (!response) {
+      throw new Error('Failed to get response from payment gateway')
+    }
 
     const responseText = await response.text()
-    console.log(`SAFEPAY response from ${endpoint}:`, {
+    console.log(`SAFEPAY response:`, {
       status: response.status,
       statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries()),
       bodyLength: responseText.length,
-      body: responseText.substring(0, 1000) // Log first 1000 chars
+      body: responseText.substring(0, 1000)
     })
 
     if (response.ok) {
@@ -159,7 +178,7 @@ serve(async (req) => {
         responseData = JSON.parse(responseText)
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', parseError)
-        throw new Error('Invalid response from payment gateway')
+        throw new Error('Invalid response format from payment gateway')
       }
 
       if (responseData?.data?.checkout_url || responseData?.checkout_url) {
@@ -182,10 +201,10 @@ serve(async (req) => {
         )
       } else {
         console.error('Checkout URL not found in response:', responseData)
-        throw new Error('Payment session creation failed - no checkout URL returned')
+        throw new Error('Payment session creation failed - invalid response structure')
       }
     } else {
-      console.error(`SAFEPAY API Error from ${endpoint}:`, {
+      console.error(`SAFEPAY API Error:`, {
         status: response.status,
         statusText: response.statusText,
         body: responseText
@@ -194,20 +213,19 @@ serve(async (req) => {
       // Return specific error based on status code
       let errorMessage = 'Payment gateway error'
       if (response.status === 401) {
-        errorMessage = 'Payment gateway authentication failed'
+        errorMessage = 'Payment gateway authentication failed - please check credentials'
       } else if (response.status >= 500) {
-        errorMessage = 'Payment gateway server error'
+        errorMessage = 'Payment gateway server temporarily unavailable'
       } else if (response.status === 400) {
-        errorMessage = 'Invalid payment request'
+        errorMessage = 'Invalid payment request - please check details'
       }
       
-      throw new Error(`${errorMessage}: ${response.status}`)
+      throw new Error(`${errorMessage} (Status: ${response.status})`)
     }
 
   } catch (error) {
     console.error('Error in payment processing:', error)
     
-    // Return success false so frontend can handle the error appropriately
     return new Response(
       JSON.stringify({
         success: false,

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Minus, Plus, ShoppingCart, Heart, ArrowLeft, ZoomIn, X } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
@@ -123,6 +123,19 @@ const ProductDetail = () => {
     setImageScale(prev => prev >= 3 ? 1 : prev + 0.5);
   };
 
+  const resetZoom = () => {
+    setImageScale(1);
+  };
+
+  const formatDescription = (description: string) => {
+    return description.split('\n').map((line, index) => (
+      <span key={index}>
+        {line}
+        {index < description.split('\n').length - 1 && <br />}
+      </span>
+    ));
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -167,7 +180,8 @@ const ProductDetail = () => {
                   <img
                     src={product.image_url}
                     alt={product.name}
-                    className="w-full h-64 sm:h-80 lg:h-96 object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                    style={{ maxHeight: '500px' }}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
                     <ZoomIn className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-8 w-8" />
@@ -241,7 +255,9 @@ const ProductDetail = () => {
             {product.description && (
               <div>
                 <h3 className="text-lg font-semibold mb-2">Description</h3>
-                <p className="text-gray-700 leading-relaxed">{product.description}</p>
+                <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                  {formatDescription(product.description)}
+                </div>
               </div>
             )}
 
@@ -309,31 +325,39 @@ const ProductDetail = () => {
       </div>
 
       {/* Image Zoom Modal */}
-      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-        <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-white">
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+      <Dialog open={isImageModalOpen} onOpenChange={(open) => {
+        setIsImageModalOpen(open);
+        if (!open) resetZoom();
+      }}>
+        <DialogContent className="max-w-5xl w-full h-[90vh] p-2 bg-white border-none">
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-white rounded-lg">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsImageModalOpen(false)}
-              className="absolute top-4 right-4 z-10 text-gray-600 hover:bg-gray-100"
+              className="absolute top-2 right-2 z-10 text-gray-600 hover:bg-gray-100 bg-white/80"
             >
               <X className="h-6 w-6" />
             </Button>
-            <div className="text-xs text-gray-500 absolute top-4 left-4 z-10 bg-white/80 p-2 rounded">
-              Click to zoom • Scroll to zoom in/out
+            <div className="text-xs text-gray-600 absolute top-2 left-2 z-10 bg-white/90 p-2 rounded shadow-sm">
+              Click to zoom • Scroll to zoom in/out • Scale: {Math.round(imageScale * 100)}%
             </div>
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="max-w-full max-h-full object-contain cursor-pointer transition-transform"
-              style={{ 
-                transform: `scale(${imageScale})`,
-                transformOrigin: 'center'
-              }}
-              onClick={handleImageClick}
-              onWheel={handleImageZoom}
-            />
+            <div className="w-full h-full flex items-center justify-center overflow-hidden">
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="max-w-none cursor-pointer transition-transform duration-200 select-none"
+                style={{ 
+                  transform: `scale(${imageScale})`,
+                  transformOrigin: 'center',
+                  maxHeight: imageScale === 1 ? '100%' : 'none',
+                  maxWidth: imageScale === 1 ? '100%' : 'none'
+                }}
+                onClick={handleImageClick}
+                onWheel={handleImageZoom}
+                draggable={false}
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
