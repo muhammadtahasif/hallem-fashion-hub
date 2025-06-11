@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -260,6 +261,20 @@ const AdminOrdersTable = () => {
     }
   };
 
+  const handleStatusFilterChange = (value: string) => {
+    console.log('Status filter changing to:', value);
+    if (value && value.trim() !== '') {
+      setStatusFilter(value);
+    }
+  };
+
+  const handleDateFilterChange = (value: string) => {
+    console.log('Date filter changing to:', value);
+    if (value && value.trim() !== '') {
+      setDateFilter(value);
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center p-8">Loading orders...</div>;
   }
@@ -301,7 +316,7 @@ const AdminOrdersTable = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger>
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -314,7 +329,7 @@ const AdminOrdersTable = () => {
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={dateFilter} onValueChange={setDateFilter}>
+          <Select value={dateFilter} onValueChange={handleDateFilterChange}>
             <SelectTrigger>
               <SelectValue placeholder="Filter by date" />
             </SelectTrigger>
