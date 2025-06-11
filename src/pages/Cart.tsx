@@ -9,11 +9,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import CartItemCard from "@/components/CartItemCard";
 
 const Cart = () => {
-  const { items, updateQuantity, removeFromCart, getCartTotal } = useCart();
+  const { items, updateQuantity, removeFromCart, getTotalPrice } = useCart();
   const { shippingCharges } = useShipping();
   const isMobile = useIsMobile();
 
-  const subtotal = getCartTotal();
+  const subtotal = getTotalPrice();
   const total = subtotal + shippingCharges;
 
   if (items.length === 0) {
@@ -57,7 +57,13 @@ const Cart = () => {
               {items.map((item) => (
                 <CartItemCard
                   key={item.id}
-                  item={item}
+                  item={{
+                    id: item.id,
+                    name: item.product?.name || '',
+                    price: item.product?.price || 0,
+                    quantity: item.quantity,
+                    image_url: item.product?.image_url
+                  }}
                   onUpdateQuantity={updateQuantity}
                   onRemove={removeFromCart}
                 />

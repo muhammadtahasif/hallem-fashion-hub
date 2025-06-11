@@ -135,6 +135,12 @@ const ProductDetail = () => {
     );
   }
 
+  // Prepare images array for the gallery
+  const galleryImages = [product.image_url];
+  if (product.images && product.images.length > 0) {
+    galleryImages.push(...product.images);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-6 sm:py-8">
       <div className="container mx-auto px-4">
@@ -152,8 +158,7 @@ const ProductDetail = () => {
           {/* Product Images */}
           <div>
             <ProductImageGallery
-              mainImage={product.image_url}
-              additionalImages={product.images}
+              images={galleryImages}
               productName={product.name}
             />
             
