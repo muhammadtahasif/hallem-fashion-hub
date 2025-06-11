@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -294,17 +295,17 @@ const AdminDashboard = () => {
           )}
 
           {/* Reports Tab */}
-          <TabsContent value="reports">
+          <TabsContent value="reports" className="space-y-6">
             <ReportsSection />
           </TabsContent>
 
           {/* Orders Tab */}
-          <TabsContent value="orders">
+          <TabsContent value="orders" className="space-y-6">
             <AdminOrdersTable />
           </TabsContent>
 
           {/* Products Tab */}
-          <TabsContent value="products">
+          <TabsContent value="products" className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -382,20 +383,18 @@ const AdminDashboard = () => {
           </TabsContent>
 
           {/* Categories Tab */}
-          <TabsContent value="categories">
-            <div className="space-y-6">
-              <CategoryManager />
-              <SubcategoryManager />
-            </div>
+          <TabsContent value="categories" className="space-y-6">
+            <CategoryManager />
+            <SubcategoryManager />
           </TabsContent>
 
           {/* Messages Tab */}
-          <TabsContent value="messages">
+          <TabsContent value="messages" className="space-y-6">
             <AdminMessagesSection />
           </TabsContent>
 
           {/* Settings Tab */}
-          <TabsContent value="settings">
+          <TabsContent value="settings" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
