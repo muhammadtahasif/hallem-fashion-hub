@@ -17,29 +17,10 @@ import CategoryManager from "@/components/CategoryManager";
 import SubcategoryManager from "@/components/SubcategoryManager";
 import ReportsSection from "@/components/ReportsSection";
 import AdminOrdersTable from "@/components/AdminOrdersTable";
+import AdminMessagesSection from "@/components/AdminMessagesSection";
 import { Trash2, Edit, Truck, Menu, Home } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-
-interface Order {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  customer_address: string;
-  total_amount: number;
-  status: string;
-  created_at: string;
-  order_items: Array<{
-    product_name: string;
-    quantity: number;
-    product_price: number;
-    products?: {
-      sku: string;
-    };
-  }>;
-}
 
 interface Product {
   id: string;
@@ -63,17 +44,12 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [statusChangeOrder, setStatusChangeOrder] = useState<Order | null>(null);
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
-  const [newStatus, setNewStatus] = useState("");
   const [tempShippingCharges, setTempShippingCharges] = useState(shippingCharges.toString());
   const [activeTab, setActiveTab] = useState("reports");
 
@@ -83,7 +59,7 @@ const AdminDashboard = () => {
         navigate('/login');
         return;
       }
-      fetchDashboardData();
+      fetchProducts();
     }
   }, [user, loading]);
 
@@ -110,35 +86,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchDashboardData = async () => {
+  const fetchProducts = async () => {
     try {
-      // Fetch orders with product SKUs
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          order_number,
-          customer_name,
-          customer_email,
-          customer_phone,
-          customer_address,
-          total_amount,
-          status,
-          created_at,
-          order_items (
-            product_name,
-            quantity,
-            product_price,
-            products (
-              sku
-            )
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (ordersError) throw ordersError;
-
-      // Fetch products with SKU
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select(`
@@ -157,41 +106,13 @@ const AdminDashboard = () => {
         `);
 
       if (productsError) throw productsError;
-
-      setOrders(ordersData || []);
       setProducts(productsData || []);
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error fetching products:', error);
       toast({
         title: "Error",
-        description: "Failed to load dashboard data.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const updateOrderStatus = async (orderId: string, status: string) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Order updated",
-        description: "Order status has been updated successfully.",
-        variant: "default"
-      });
-
-      fetchDashboardData();
-    } catch (error) {
-      console.error('Error updating order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update order status.",
+        description: "Failed to load products.",
         variant: "destructive"
       });
     }
@@ -201,20 +122,29 @@ const AdminDashboard = () => {
     if (!productToDelete) return;
 
     try {
-      const { error } = await supabase
+      // Delete all order items with this product first
+      const { error: orderItemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('product_id', productToDelete.id);
+
+      if (orderItemsError) throw orderItemsError;
+
+      // Delete the product
+      const { error: productError } = await supabase
         .from('products')
         .delete()
         .eq('id', productToDelete.id);
 
-      if (error) throw error;
+      if (productError) throw productError;
 
       toast({
         title: "Product deleted",
-        description: "Product has been deleted successfully.",
+        description: "Product and all related data have been deleted successfully.",
         variant: "default"
       });
 
-      fetchDashboardData();
+      fetchProducts();
       setIsDeleteDialogOpen(false);
       setProductToDelete(null);
     } catch (error) {
@@ -224,63 +154,6 @@ const AdminDashboard = () => {
         description: "Failed to delete product.",
         variant: "destructive"
       });
-    }
-  };
-
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) return;
-
-    try {
-      // First delete order items
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .delete()
-        .eq('order_id', orderId);
-
-      if (itemsError) throw itemsError;
-
-      // Then delete the order
-      const { error: orderError } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', orderId);
-
-      if (orderError) throw orderError;
-
-      toast({
-        title: "Order deleted",
-        description: "Order has been deleted successfully.",
-        variant: "default"
-      });
-
-      fetchDashboardData();
-    } catch (error) {
-      console.error('Error deleting order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete order.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleStatusChange = () => {
-    if (statusChangeOrder && newStatus) {
-      updateOrderStatus(statusChangeOrder.id, newStatus);
-      setIsStatusDialogOpen(false);
-      setStatusChangeOrder(null);
-      setNewStatus("");
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending': return 'bg-yellow-500';
-      case 'processing': return 'bg-blue-500';
-      case 'shipped': return 'bg-purple-500';
-      case 'delivered': return 'bg-green-500';
-      case 'cancelled': return 'bg-red-500';
-      default: return 'bg-gray-500';
     }
   };
 
@@ -345,6 +218,16 @@ const AdminDashboard = () => {
             Categories
           </Button>
           <Button
+            variant={activeTab === "messages" ? "default" : "ghost"}
+            className="w-full justify-start text-left"
+            onClick={() => {
+              setActiveTab("messages");
+              setIsSidebarOpen(false);
+            }}
+          >
+            Messages
+          </Button>
+          <Button
             variant={activeTab === "settings" ? "default" : "ghost"}
             className="w-full justify-start text-left"
             onClick={() => {
@@ -400,11 +283,12 @@ const AdminDashboard = () => {
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {!isMobile && (
-            <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-6 h-auto p-1">
               <TabTriggerComponent value="reports">Reports</TabTriggerComponent>
               <TabTriggerComponent value="orders">Orders</TabTriggerComponent>
               <TabTriggerComponent value="products">Products</TabTriggerComponent>
               <TabTriggerComponent value="categories">Categories</TabTriggerComponent>
+              <TabTriggerComponent value="messages">Messages</TabTriggerComponent>
               <TabTriggerComponent value="settings">Settings</TabTriggerComponent>
             </TabsList>
           )}
@@ -503,6 +387,11 @@ const AdminDashboard = () => {
               <CategoryManager />
               <SubcategoryManager />
             </div>
+          </TabsContent>
+
+          {/* Messages Tab */}
+          <TabsContent value="messages">
+            <AdminMessagesSection />
           </TabsContent>
 
           {/* Settings Tab */}
@@ -613,46 +502,14 @@ const AdminDashboard = () => {
             setSelectedProduct(null);
             setIsEditModalOpen(false);
           }}
-          onUpdate={fetchDashboardData}
+          onUpdate={fetchProducts}
         />
 
         <ProductAddModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          onAdd={fetchDashboardData}
+          onAdd={fetchProducts}
         />
-
-        {/* Status Change Dialog */}
-        <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-lg">Change Order Status</DialogTitle>
-              <DialogDescription className="text-sm">
-                Select the new status for order {statusChangeOrder?.order_number}
-              </DialogDescription>
-            </DialogHeader>
-            <Select value={newStatus} onValueChange={setNewStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-            <DialogFooter className="flex flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)} className="w-full sm:w-auto">
-                Cancel
-              </Button>
-              <Button onClick={handleStatusChange} className="bg-rose-500 hover:bg-rose-600 w-full sm:w-auto">
-                Update Status
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Delete Product Dialog */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -660,7 +517,7 @@ const AdminDashboard = () => {
             <DialogHeader>
               <DialogTitle className="text-lg">Delete Product</DialogTitle>
               <DialogDescription className="text-sm">
-                Are you sure you want to delete "{productToDelete?.name}"? This action cannot be undone.
+                Are you sure you want to delete "{productToDelete?.name}"? This will also remove all order history and reports data for this product. This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex flex-col sm:flex-row gap-2">

@@ -1,155 +1,112 @@
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useShipping } from "@/hooks/useShipping";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { ShoppingBag, ArrowLeft } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import CartItemCard from "@/components/CartItemCard";
 
 const Cart = () => {
-  const { items, loading, removeFromCart, updateQuantity, getTotalPrice } = useCart();
+  const { items, updateQuantity, removeFromCart, getCartTotal } = useCart();
   const { shippingCharges } = useShipping();
-  const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
-  const handleCheckout = () => {
-    navigate('/checkout');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div>Loading cart...</div>
-      </div>
-    );
-  }
+  const subtotal = getCartTotal();
+  const total = subtotal + shippingCharges;
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
-          <p className="text-gray-600 mb-6">Start shopping to add items to your cart</p>
-          <Link to="/shop">
-            <Button className="bg-rose-500 hover:bg-rose-600">
-              Continue Shopping
+      <div className="min-h-screen fashion-gradient">
+        <div className="container mx-auto px-4 py-8 sm:py-12">
+          <div className="text-center max-w-md mx-auto">
+            <ShoppingBag className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif mb-4">Your Cart is Empty</h1>
+            <p className="text-gray-600 mb-8">
+              Looks like you haven't added anything to your cart yet.
+            </p>
+            <Button asChild className="bg-rose-500 hover:bg-rose-600">
+              <Link to="/shop">
+                Continue Shopping
+              </Link>
             </Button>
-          </Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  const subtotal = getTotalPrice();
-  const finalTotal = subtotal + shippingCharges;
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold font-serif mb-8">Shopping Cart</h1>
+    <div className="min-h-screen fashion-gradient">
+      <div className="container mx-auto px-4 py-6 sm:py-12">
+        <div className="mb-6 sm:mb-8">
+          <Button variant="ghost" asChild className="mb-4">
+            <Link to="/shop">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Continue Shopping
+            </Link>
+          </Button>
+          <h1 className="text-2xl sm:text-3xl font-bold font-serif">Your Cart ({items.length} items)</h1>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+          {/* Cart Items */}
           <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 border-b pb-4">
-                      <Link to={`/product/${item.product_id}`}>
-                        <img
-                          src={item.product?.image_url}
-                          alt={item.product?.name}
-                          className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                        />
-                      </Link>
-                      <div className="flex-1">
-                        <Link to={`/product/${item.product_id}`}>
-                          <h3 className="font-semibold hover:text-rose-500 transition-colors cursor-pointer">
-                            {item.product?.name}
-                          </h3>
-                        </Link>
-                        <p className="text-rose-500 font-medium">
-                          PKR {item.product?.price.toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <Input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => {
-                            const newQuantity = parseInt(e.target.value) || 1;
-                            updateQuantity(item.id, Math.max(1, newQuantity));
-                          }}
-                          className="w-16 text-center"
-                          min="1"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">
-                          PKR {((item.product?.price || 0) * item.quantity).toLocaleString()}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-3 sm:space-y-4">
+              {items.map((item) => (
+                <CartItemCard
+                  key={item.id}
+                  item={item}
+                  onUpdateQuantity={updateQuantity}
+                  onRemove={removeFromCart}
+                />
+              ))}
+            </div>
           </div>
 
-          <div>
-            <Card>
-              <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between">
+          {/* Order Summary */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-6">
+              <CardHeader>
+                <CardTitle className="text-lg sm:text-xl">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm sm:text-base">
                     <span>Subtotal</span>
                     <span>PKR {subtotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm sm:text-base">
                     <span>Shipping</span>
-                    <span>{shippingCharges === 0 ? 'Free' : `PKR ${shippingCharges.toLocaleString()}`}</span>
+                    <span>
+                      {shippingCharges === 0 ? "Free" : `PKR ${shippingCharges.toLocaleString()}`}
+                    </span>
                   </div>
-                  <div className="border-t pt-2">
-                    <div className="flex justify-between font-semibold text-lg">
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between text-lg font-semibold">
                       <span>Total</span>
-                      <span className="text-rose-500">PKR {finalTotal.toLocaleString()}</span>
+                      <span>PKR {total.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
-                <Button
-                  onClick={handleCheckout}
-                  className="w-full bg-rose-500 hover:bg-rose-600 mb-4"
-                  size="lg"
+
+                <Button 
+                  asChild 
+                  className="w-full bg-rose-500 hover:bg-rose-600 text-white py-2 sm:py-3"
                 >
-                  Proceed to Checkout
+                  <Link to="/checkout">
+                    Proceed to Checkout
+                  </Link>
                 </Button>
-                <Link to="/shop">
-                  <Button variant="outline" className="w-full">
-                    Continue Shopping
+
+                <div className="text-center">
+                  <Button variant="ghost" asChild className="text-sm">
+                    <Link to="/shop">
+                      Continue Shopping
+                    </Link>
                   </Button>
-                </Link>
+                </div>
               </CardContent>
             </Card>
           </div>

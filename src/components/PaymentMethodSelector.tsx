@@ -1,62 +1,59 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CreditCard, Truck, CheckCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { CreditCard, Truck, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PaymentMethodSelectorProps {
-  onSelectMethod: (method: 'cod' | 'online') => void;
-  selectedMethod: 'cod' | 'online' | null;
+  selectedMethod: string;
+  onMethodChange: (method: string) => void;
 }
 
-const PaymentMethodSelector = ({ onSelectMethod, selectedMethod }: PaymentMethodSelectorProps) => {
+const PaymentMethodSelector = ({ selectedMethod, onMethodChange }: PaymentMethodSelectorProps) => {
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader>
-        <CardTitle>Select Payment Method</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5" />
+          Payment Method
+        </CardTitle>
+        <CardDescription>
+          Choose your preferred payment method
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div 
-            className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-              selectedMethod === 'cod' 
-                ? 'border-rose-500 bg-rose-50' 
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => onSelectMethod('cod')}
-          >
-            <div className="flex items-center space-x-3">
-              <Truck className="w-6 h-6 text-gray-600" />
+        <RadioGroup value={selectedMethod} onValueChange={onMethodChange}>
+          <div className="flex items-center space-x-2 p-3 border rounded-lg">
+            <RadioGroupItem value="cod" id="cod" />
+            <Label htmlFor="cod" className="flex items-center gap-2 cursor-pointer flex-1">
+              <Truck className="h-4 w-4" />
               <div>
-                <h3 className="font-semibold">Cash on Delivery (COD)</h3>
-                <p className="text-sm text-gray-600">Pay when you receive your order</p>
+                <div className="font-medium">Cash on Delivery</div>
+                <div className="text-sm text-gray-500">Pay when you receive your order</div>
               </div>
-              {selectedMethod === 'cod' && (
-                <CheckCircle className="w-5 h-5 text-rose-500 ml-auto" />
-              )}
-            </div>
+            </Label>
           </div>
-
-          <div 
-            className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-              selectedMethod === 'online' 
-                ? 'border-rose-500 bg-rose-50' 
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => onSelectMethod('online')}
-          >
-            <div className="flex items-center space-x-3">
-              <CreditCard className="w-6 h-6 text-gray-600" />
+          
+          <div className="flex items-center space-x-2 p-3 border rounded-lg opacity-50">
+            <RadioGroupItem value="online" id="online" disabled />
+            <Label htmlFor="online" className="flex items-center gap-2 cursor-not-allowed flex-1">
+              <CreditCard className="h-4 w-4" />
               <div>
-                <h3 className="font-semibold">Online Payment</h3>
-                <p className="text-sm text-gray-600">Pay securely with SAFEPAY</p>
+                <div className="font-medium">Online Payment</div>
+                <div className="text-sm text-gray-500">Credit/Debit Card, JazzCash, EasyPaisa</div>
               </div>
-              {selectedMethod === 'online' && (
-                <CheckCircle className="w-5 h-5 text-rose-500 ml-auto" />
-              )}
-            </div>
+            </Label>
           </div>
-        </div>
+        </RadioGroup>
+        
+        <Alert className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Online payment is not available right now. You can order by "Cash on Delivery".
+          </AlertDescription>
+        </Alert>
       </CardContent>
     </Card>
   );
