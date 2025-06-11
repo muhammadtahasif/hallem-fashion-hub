@@ -40,8 +40,8 @@ const AdminOrdersTable = () => {
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all-statuses");
+  const [dateFilter, setDateFilter] = useState("all-time");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -104,26 +104,26 @@ const AdminOrdersTable = () => {
     }
 
     // Apply status filter
-    if (statusFilter && statusFilter !== "all") {
+    if (statusFilter && statusFilter !== "all-statuses") {
       filtered = filtered.filter(order => order.status === statusFilter);
     }
 
     // Apply date filter
-    if (dateFilter && dateFilter !== "all") {
+    if (dateFilter && dateFilter !== "all-time") {
       const now = new Date();
       let startDate = new Date();
 
       switch (dateFilter) {
-        case 'today':
+        case 'filter-today':
           startDate.setHours(0, 0, 0, 0);
           break;
-        case '2days':
+        case 'filter-2days':
           startDate.setDate(now.getDate() - 2);
           break;
-        case 'week':
+        case 'filter-week':
           startDate.setDate(now.getDate() - 7);
           break;
-        case 'month':
+        case 'filter-month':
           startDate.setMonth(now.getMonth() - 1);
           break;
         default:
@@ -206,12 +206,12 @@ const AdminOrdersTable = () => {
     // Add date range info
     doc.setFontSize(12);
     let dateRangeText = 'All Orders';
-    if (dateFilter && dateFilter !== "all") {
+    if (dateFilter && dateFilter !== "all-time") {
       const filterText = {
-        'today': 'Today',
-        '2days': 'Last 2 Days',
-        'week': 'Last Week',
-        'month': 'Last Month'
+        'filter-today': 'Today',
+        'filter-2days': 'Last 2 Days',
+        'filter-week': 'Last Week',
+        'filter-month': 'Last Month'
       };
       dateRangeText = filterText[dateFilter as keyof typeof filterText] || 'All Orders';
     }
@@ -246,7 +246,7 @@ const AdminOrdersTable = () => {
     doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 14, finalY + 30);
 
     // Save PDF
-    doc.save(`orders-report-${dateFilter === "all" ? "all" : dateFilter}-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`orders-report-${dateFilter === "all-time" ? "all" : dateFilter}-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const getStatusColor = (status: string) => {
@@ -306,7 +306,7 @@ const AdminOrdersTable = () => {
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all-statuses">All Statuses</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="processing">Processing</SelectItem>
               <SelectItem value="shipped">Shipped</SelectItem>
@@ -319,19 +319,19 @@ const AdminOrdersTable = () => {
               <SelectValue placeholder="Filter by date" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Time</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="2days">Last 2 Days</SelectItem>
-              <SelectItem value="week">Last Week</SelectItem>
-              <SelectItem value="month">Last Month</SelectItem>
+              <SelectItem value="all-time">All Time</SelectItem>
+              <SelectItem value="filter-today">Today</SelectItem>
+              <SelectItem value="filter-2days">Last 2 Days</SelectItem>
+              <SelectItem value="filter-week">Last Week</SelectItem>
+              <SelectItem value="filter-month">Last Month</SelectItem>
             </SelectContent>
           </Select>
           <Button
             variant="outline"
             onClick={() => {
               setSearchTerm("");
-              setStatusFilter("all");
-              setDateFilter("all");
+              setStatusFilter("all-statuses");
+              setDateFilter("all-time");
             }}
           >
             Clear Filters
