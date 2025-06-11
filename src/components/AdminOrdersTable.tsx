@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,8 +40,8 @@ const AdminOrdersTable = () => {
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -105,12 +104,12 @@ const AdminOrdersTable = () => {
     }
 
     // Apply status filter
-    if (statusFilter) {
+    if (statusFilter && statusFilter !== "all") {
       filtered = filtered.filter(order => order.status === statusFilter);
     }
 
     // Apply date filter
-    if (dateFilter) {
+    if (dateFilter && dateFilter !== "all") {
       const now = new Date();
       let startDate = new Date();
 
@@ -207,7 +206,7 @@ const AdminOrdersTable = () => {
     // Add date range info
     doc.setFontSize(12);
     let dateRangeText = 'All Orders';
-    if (dateFilter) {
+    if (dateFilter && dateFilter !== "all") {
       const filterText = {
         'today': 'Today',
         '2days': 'Last 2 Days',
@@ -247,7 +246,7 @@ const AdminOrdersTable = () => {
     doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 14, finalY + 30);
 
     // Save PDF
-    doc.save(`orders-report-${dateFilter || 'all'}-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`orders-report-${dateFilter === "all" ? "all" : dateFilter}-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const getStatusColor = (status: string) => {
@@ -307,7 +306,7 @@ const AdminOrdersTable = () => {
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="processing">Processing</SelectItem>
               <SelectItem value="shipped">Shipped</SelectItem>
@@ -320,7 +319,7 @@ const AdminOrdersTable = () => {
               <SelectValue placeholder="Filter by date" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Time</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="2days">Last 2 Days</SelectItem>
               <SelectItem value="week">Last Week</SelectItem>
@@ -331,8 +330,8 @@ const AdminOrdersTable = () => {
             variant="outline"
             onClick={() => {
               setSearchTerm("");
-              setStatusFilter("");
-              setDateFilter("");
+              setStatusFilter("all");
+              setDateFilter("all");
             }}
           >
             Clear Filters
