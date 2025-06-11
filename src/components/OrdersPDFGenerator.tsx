@@ -41,14 +41,16 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       
-      // Define colors as tuples
-      const primaryColor: [number, number, number] = [236, 72, 153]; // Rose 500
-      const headerBgColor: [number, number, number] = [249, 250, 251]; // Gray 50
-      const borderColor: [number, number, number] = [229, 231, 235]; // Gray 200
-      const textDark: [number, number, number] = [31, 41, 55]; // Gray 800
-      const textMuted: [number, number, number] = [107, 114, 128]; // Gray 500
+      // Define colors
+      const primaryColor: [number, number, number] = [236, 72, 153];
+      const headerBgColor: [number, number, number] = [249, 250, 251];
+      const borderColor: [number, number, number] = [229, 231, 235];
+      const textDark: [number, number, number] = [31, 41, 55];
+      const textMuted: [number, number, number] = [107, 114, 128];
 
-      // Header section
+      let currentY = 20;
+
+      // Header
       doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.rect(0, 0, pageWidth, 30, 'F');
       
@@ -61,17 +63,20 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
       doc.setFont('helvetica', 'normal');
       doc.text('Premium Fashion Collection', 15, 25);
       
-      // Contact info in header
       doc.setFontSize(7);
       doc.text('📞 +923234882256 | ✉️ digitaleyemedia25@gmail.com', pageWidth - 80, 20);
+
+      currentY = 40;
 
       // Report title
       doc.setTextColor(textDark[0], textDark[1], textDark[2]);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text(title, 15, 42);
+      doc.text(title, 15, currentY);
       
-      // Date and summary info
+      currentY += 10;
+
+      // Summary
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
@@ -80,164 +85,150 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
         month: 'short',
         day: 'numeric'
       });
-      doc.text(`Generated: ${currentDate}`, 15, 50);
-      doc.text(`Total Orders: ${orders.length}`, 15, 56);
+      doc.text(`Generated: ${currentDate}`, 15, currentY);
+      doc.text(`Total Orders: ${orders.length}`, 15, currentY + 6);
       
       const totalRevenue = orders.reduce((sum, order) => sum + order.total_amount, 0);
-      doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 15, 62);
+      doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 15, currentY + 12);
 
-      // Decorative line
-      doc.setLineWidth(0.3);
-      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.line(15, 68, pageWidth - 15, 68);
+      currentY += 25;
 
-      // Table data preparation
-      const tableData = orders.map((order, index) => [
-        (index + 1).toString(),
-        order.order_number,
-        order.customer_name,
-        order.customer_phone,
-        order.customer_address.length > 25 ? order.customer_address.substring(0, 25) + '...' : order.customer_address,
-        `PKR ${order.total_amount.toLocaleString()}`,
-        order.status.charAt(0).toUpperCase() + order.status.slice(1),
-        new Date(order.created_at).toLocaleDateString('en-US', {
-          day: '2-digit',
-          month: 'short'
-        })
-      ]);
-
-      // Enhanced table with smaller, more readable styling
-      autoTable(doc, {
-        head: [['#', 'Order ID', 'Customer', 'Phone', 'Address', 'Amount', 'Status', 'Date']],
-        body: tableData,
-        startY: 75,
-        theme: 'grid',
-        headStyles: {
-          fillColor: headerBgColor,
-          textColor: textDark,
-          fontStyle: 'bold',
-          fontSize: 7,
-          cellPadding: { top: 4, right: 2, bottom: 4, left: 2 },
-          lineColor: borderColor,
-          lineWidth: 0.3,
-        },
-        bodyStyles: {
-          fontSize: 6,
-          cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
-          lineColor: borderColor,
-          lineWidth: 0.2,
-          textColor: textDark,
-        },
-        columnStyles: {
-          0: { cellWidth: 8, halign: 'center' }, // #
-          1: { cellWidth: 22, fontStyle: 'bold', fontSize: 6 }, // Order ID
-          2: { cellWidth: 25, fontSize: 6 }, // Customer
-          3: { cellWidth: 22, fontSize: 6 }, // Phone
-          4: { cellWidth: 30, fontSize: 5 }, // Address
-          5: { cellWidth: 20, halign: 'right', fontStyle: 'bold', fontSize: 6 }, // Amount
-          6: { cellWidth: 18, halign: 'center', fontSize: 6 }, // Status
-          7: { cellWidth: 15, halign: 'center', fontSize: 6 }, // Date
-        },
-        alternateRowStyles: {
-          fillColor: [252, 252, 252] // Very light gray
-        },
-        margin: { left: 15, right: 15 },
-        didDrawCell: (data) => {
-          // Add status badges with colors
-          if (data.column.index === 6 && data.cell.section === 'body') {
-            const status = data.cell.text[0].toLowerCase();
-            let statusColor: [number, number, number];
-            
-            switch (status) {
-              case 'pending':
-                statusColor = [252, 211, 77]; // Yellow
-                break;
-              case 'processing':
-                statusColor = [96, 165, 250]; // Blue
-                break;
-              case 'shipped':
-                statusColor = [168, 85, 247]; // Purple
-                break;
-              case 'delivered':
-                statusColor = [52, 211, 153]; // Green
-                break;
-              case 'cancelled':
-                statusColor = [248, 113, 113]; // Red
-                break;
-              default:
-                statusColor = [156, 163, 175]; // Gray
-            }
-            
-            // Draw colored background for status
-            doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-            doc.roundedRect(
-              data.cell.x + 1, 
-              data.cell.y + 1, 
-              data.cell.width - 2, 
-              data.cell.height - 2, 
-              1, 1, 'F'
-            );
-            
-            // Add status text with white color
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(5);
-            doc.setFont('helvetica', 'bold');
-            doc.text(
-              data.cell.text[0], 
-              data.cell.x + data.cell.width / 2, 
-              data.cell.y + data.cell.height / 2 + 1, 
-              { align: 'center' }
-            );
-          }
+      // Individual Order Receipts
+      for (let i = 0; i < orders.length; i++) {
+        const order = orders[i];
+        
+        // Check if we need a new page
+        if (currentY > pageHeight - 80) {
+          doc.addPage();
+          currentY = 20;
         }
-      });
 
-      // Footer with summary
-      const finalY = (doc as any).lastAutoTable.finalY + 15;
-      if (finalY < pageHeight - 25) {
-        // Summary box
+        // Order header box
         doc.setFillColor(headerBgColor[0], headerBgColor[1], headerBgColor[2]);
-        doc.roundedRect(15, finalY, pageWidth - 30, 20, 2, 2, 'F');
+        doc.roundedRect(15, currentY, pageWidth - 30, 20, 2, 2, 'F');
         
         doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
         doc.setLineWidth(0.3);
-        doc.roundedRect(15, finalY, pageWidth - 30, 20, 2, 2, 'S');
+        doc.roundedRect(15, currentY, pageWidth - 30, 20, 2, 2, 'S');
+        
+        // Order number and status
+        doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`ORDER: ${order.order_number}`, 20, currentY + 8);
+        
+        // Status badge
+        const statusColors = {
+          pending: [252, 211, 77],
+          processing: [96, 165, 250],
+          shipped: [168, 85, 247],
+          delivered: [52, 211, 153],
+          cancelled: [248, 113, 113]
+        };
+        const statusColor = statusColors[order.status.toLowerCase() as keyof typeof statusColors] || [156, 163, 175];
+        
+        doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+        doc.roundedRect(pageWidth - 60, currentY + 3, 35, 8, 1, 1, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.text(order.status.toUpperCase(), pageWidth - 43, currentY + 7.5, { align: 'center' });
+        
+        // Date and amount
+        doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(new Date(order.created_at).toLocaleDateString(), 20, currentY + 15);
+        
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`PKR ${order.total_amount.toLocaleString()}`, pageWidth - 25, currentY + 15, { align: 'right' });
+
+        currentY += 25;
+
+        // Customer details section
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(15, currentY, pageWidth - 30, 25, 2, 2, 'F');
+        doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+        doc.roundedRect(15, currentY, pageWidth - 30, 25, 2, 2, 'S');
         
         doc.setTextColor(textDark[0], textDark[1], textDark[2]);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
-        doc.text('Summary', 20, finalY + 8);
+        doc.text('CUSTOMER DETAILS', 20, currentY + 8);
         
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
-        doc.text(`Total Orders: ${orders.length}`, 20, finalY + 14);
-        doc.text(`Total Revenue: PKR ${totalRevenue.toLocaleString()}`, 20, finalY + 18);
+        doc.text(`Name: ${order.customer_name}`, 20, currentY + 14);
+        doc.text(`Email: ${order.customer_email}`, 20, currentY + 18);
+        doc.text(`Phone: ${order.customer_phone}`, 20, currentY + 22);
         
-        // Average order value
-        const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
-        doc.text(`Avg Order: PKR ${Math.round(avgOrderValue).toLocaleString()}`, pageWidth - 50, finalY + 14);
-        
-        // Order status distribution
-        const statusCounts = orders.reduce((acc, order) => {
-          acc[order.status] = (acc[order.status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        let statusText = 'Status: ';
-        Object.entries(statusCounts).forEach(([status, count], index) => {
-          statusText += `${status}: ${count}`;
-          if (index < Object.entries(statusCounts).length - 1) statusText += ', ';
+        // Address (word wrap)
+        const addressLines = doc.splitTextToSize(`Address: ${order.customer_address}`, pageWidth - 50);
+        doc.text(addressLines, pageWidth / 2 + 10, currentY + 14);
+
+        currentY += 30;
+
+        // Order items table
+        const itemsData = order.order_items.map(item => [
+          item.product_name,
+          item.quantity.toString(),
+          `PKR ${item.product_price.toLocaleString()}`,
+          `PKR ${(item.quantity * item.product_price).toLocaleString()}`
+        ]);
+
+        autoTable(doc, {
+          head: [['Product', 'Qty', 'Price', 'Total']],
+          body: itemsData,
+          startY: currentY,
+          theme: 'grid',
+          headStyles: {
+            fillColor: primaryColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 7,
+            cellPadding: 2,
+          },
+          bodyStyles: {
+            fontSize: 6,
+            cellPadding: 2,
+            textColor: textDark,
+          },
+          columnStyles: {
+            0: { cellWidth: (pageWidth - 30) * 0.5 },
+            1: { cellWidth: (pageWidth - 30) * 0.15, halign: 'center' },
+            2: { cellWidth: (pageWidth - 30) * 0.175, halign: 'right' },
+            3: { cellWidth: (pageWidth - 30) * 0.175, halign: 'right' },
+          },
+          margin: { left: 15, right: 15 },
         });
-        doc.text(statusText, pageWidth - 50, finalY + 18);
+
+        currentY = (doc as any).lastAutoTable.finalY + 10;
+
+        // Order total box
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.roundedRect(pageWidth - 80, currentY, 65, 12, 2, 2, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`TOTAL: PKR ${order.total_amount.toLocaleString()}`, pageWidth - 47.5, currentY + 7, { align: 'center' });
+
+        currentY += 20;
+
+        // Separator line
+        if (i < orders.length - 1) {
+          doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+          doc.setLineWidth(0.5);
+          doc.line(15, currentY, pageWidth - 15, currentY);
+          currentY += 10;
+        }
       }
 
-      // Page footer
+      // Footer
       doc.setFontSize(6);
       doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
       doc.text('A&Z Fabrics - This is a computer-generated document.', pageWidth / 2, pageHeight - 10, { align: 'center' });
-      
-      // Page numbering
-      doc.text(`Page 1`, pageWidth - 15, pageHeight - 8);
 
       // Save the PDF
       const fileName = `${title.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;

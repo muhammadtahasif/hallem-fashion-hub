@@ -18,6 +18,7 @@ import SubcategoryManager from "@/components/SubcategoryManager";
 import ReportsSection from "@/components/ReportsSection";
 import AdminOrdersTable from "@/components/AdminOrdersTable";
 import AdminMessagesSection from "@/components/AdminMessagesSection";
+import AdminMessagesDetail from "@/components/AdminMessagesDetail";
 import { Trash2, Edit, Truck, Menu, Home } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -391,7 +392,7 @@ const AdminDashboard = () => {
 
           {/* Messages Tab */}
           <TabsContent value="messages" className="space-y-6">
-            <AdminMessagesSection />
+            <AdminMessagesDetail />
           </TabsContent>
 
           {/* Settings Tab */}
@@ -536,3 +537,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+}
