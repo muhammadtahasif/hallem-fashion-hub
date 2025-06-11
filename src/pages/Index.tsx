@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -83,7 +84,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section - Made smaller and more responsive */}
+      {/* Hero Section */}
       <section className="relative min-h-[60vh] lg:min-h-[70vh] bg-gradient-to-r from-rose-50 to-pink-50 flex items-center py-8 lg:py-12">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center">
@@ -106,7 +107,6 @@ const Index = () => {
               </div>
             </div>
             <div className="relative flex justify-center lg:justify-end">
-              {/* Made image smaller and more responsive */}
               <div className="relative w-full max-w-xs sm:max-w-sm lg:max-w-md">
                 <img 
                   src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&h=500&fit=crop" 
@@ -126,7 +126,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Categories Section - Keep existing code */}
+      {/* Categories Section - Updated for better mobile responsive */}
       <section className="py-16 lg:py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 lg:mb-16">
@@ -136,11 +136,12 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* Mobile: 2 columns, Tablet: 2 columns, Desktop: 3 columns */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
             {categories.map(category => (
               <Link key={category.id} to={`/shop?category=${category.slug}`}>
                 <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300">
-                  <div className="relative h-48 lg:h-64 overflow-hidden">
+                  <div className="relative h-32 sm:h-40 lg:h-64 overflow-hidden">
                     <img 
                       src={getCategoryImage(category.slug)} 
                       alt={category.name} 
@@ -148,7 +149,7 @@ const Index = () => {
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-30 transition-all duration-300" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <h3 className="text-white text-xl lg:text-2xl font-bold font-serif capitalize">
+                      <h3 className="text-white text-sm sm:text-lg lg:text-2xl font-bold font-serif capitalize text-center px-2">
                         {category.name}
                       </h3>
                     </div>
@@ -160,7 +161,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Products - Keep existing code */}
+      {/* Featured Products - Updated for better mobile responsive */}
       <section className="py-16 lg:py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 lg:mb-16">
@@ -170,7 +171,8 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+          {/* Mobile: 2 columns, Tablet: 2 columns, Desktop: 3-4 columns */}
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-8">
             {featuredProducts.map(product => {
               const discount = calculateDiscount(product.price, product.original_price);
               return (
@@ -181,27 +183,27 @@ const Index = () => {
                         <img 
                           src={product.image_url} 
                           alt={product.name} 
-                          className="w-full h-48 lg:h-64 object-cover group-hover:scale-105 transition-transform duration-300" 
+                          className="w-full h-32 sm:h-40 lg:h-64 object-cover group-hover:scale-105 transition-transform duration-300" 
                         />
                         {discount > 0 && (
-                          <Badge className="absolute top-2 left-2 bg-rose-500">
+                          <Badge className="absolute top-1 left-1 lg:top-2 lg:left-2 bg-rose-500 text-xs">
                             -{discount}%
                           </Badge>
                         )}
                       </div>
                     </Link>
-                    <CardContent className="p-4">
+                    <CardContent className="p-2 sm:p-3 lg:p-4">
                       <Link to={`/product/${product.id}`}>
-                        <h3 className="font-semibold mb-2 group-hover:text-rose-500 transition-colors text-sm lg:text-base">
+                        <h3 className="font-semibold mb-1 lg:mb-2 group-hover:text-rose-500 transition-colors text-xs sm:text-sm lg:text-base line-clamp-2">
                           {product.name}
                         </h3>
                       </Link>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-bold text-rose-500">
+                      <div className="flex items-center space-x-1 lg:space-x-2">
+                        <span className="text-sm sm:text-base lg:text-lg font-bold text-rose-500">
                           PKR {product.price.toLocaleString()}
                         </span>
                         {product.original_price && product.original_price > product.price && (
-                          <span className="text-sm text-gray-500 line-through">
+                          <span className="text-xs sm:text-sm text-gray-500 line-through">
                             PKR {product.original_price.toLocaleString()}
                           </span>
                         )}

@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -25,21 +24,34 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import ProductSearchWithSKU from "@/components/ProductSearchWithSKU";
+
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  image_url: string;
+  slug: string;
+}
 
 const Navbar = () => {
-  const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { getTotalItems } = useCart();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery("");
-      setIsMobileMenuOpen(false);
-    }
+  const handleSearchResults = (products: Product[]) => {
+    setSearchResults(products);
+    setShowSearchResults(products.length > 0);
+  };
+
+  const handleProductSelect = (productId: string) => {
+    navigate(`/product/${productId}`);
+    setShowSearchResults(false);
+    setIsMobileMenuOpen(false);
   };
 
   const handleSignOut = async () => {
@@ -72,18 +84,37 @@ const Navbar = () => {
           </div>
 
           {/* Search Bar - Desktop */}
-          <form onSubmit={handleSearch} className="hidden md:flex items-center max-w-xs lg:max-w-md mx-4 flex-1">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 h-9 text-sm"
-              />
-            </div>
-          </form>
+          <div className="hidden md:flex items-center max-w-xs lg:max-w-md mx-4 flex-1 relative">
+            <ProductSearchWithSKU
+              onSearchResults={handleSearchResults}
+              placeholder="Search products..."
+              className="w-full"
+            />
+            
+            {/* Search Results Dropdown */}
+            {showSearchResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
+                {searchResults.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => handleProductSelect(product.id)}
+                    className="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                  >
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-10 h-10 object-cover rounded mr-3 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                      <p className="text-xs text-gray-500">SKU: {product.sku}</p>
+                      <p className="text-sm font-semibold text-rose-500">PKR {product.price.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Right Section */}
           <div className="flex items-center space-x-2 sm:space-x-3">
@@ -158,20 +189,37 @@ const Navbar = () => {
               <SheetContent side="right" className="w-80 sm:w-96">
                 <div className="flex flex-col space-y-6 mt-8">
                   {/* Mobile Search */}
-                  <form onSubmit={handleSearch} className="flex items-center">
-                    <div className="relative w-full">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 pr-4 h-10"
-                        autoComplete="off"
-                        inputMode="search"
-                      />
-                    </div>
-                  </form>
+                  <div className="relative">
+                    <ProductSearchWithSKU
+                      onSearchResults={handleSearchResults}
+                      placeholder="Search products..."
+                      className="w-full"
+                    />
+                    
+                    {/* Mobile Search Results */}
+                    {showSearchResults && searchResults.length > 0 && (
+                      <div className="mt-2 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
+                        {searchResults.map((product) => (
+                          <div
+                            key={product.id}
+                            onClick={() => handleProductSelect(product.id)}
+                            className="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                          >
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-10 h-10 object-cover rounded mr-3 flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                              <p className="text-xs text-gray-500">SKU: {product.sku}</p>
+                              <p className="text-sm font-semibold text-rose-500">PKR {product.price.toLocaleString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Navigation Links */}
                   <div className="space-y-4">
@@ -194,6 +242,14 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+      
+      {/* Overlay to close search results when clicking outside */}
+      {showSearchResults && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowSearchResults(false)}
+        />
+      )}
     </nav>
   );
 };

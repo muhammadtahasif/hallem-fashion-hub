@@ -198,7 +198,7 @@ const Shop = () => {
             </div>
 
             {/* Mobile: 2 products per row, Desktop: 3 products per row */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 md:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="group hover:shadow-lg transition-shadow">
                   <CardContent className="p-0">
