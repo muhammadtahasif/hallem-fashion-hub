@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,7 +12,8 @@ import { useShipping } from "@/hooks/useShipping";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { Package, CreditCard, ShieldCheck, MapPin, Phone, Mail, Smartphone, Building, Wallet } from "lucide-react";
+import { Package, CreditCard, ShieldCheck, MapPin, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CustomerInfo {
   name: string;
@@ -24,17 +24,6 @@ interface CustomerInfo {
   province: string;
   country: string;
   postalCode: string;
-}
-
-interface PaymentDetails {
-  paymentType: 'card' | 'jazzcash' | 'easypaisa' | 'bank';
-  cardNumber?: string;
-  expiryDate?: string;
-  cvv?: string;
-  cardHolderName?: string;
-  mobileNumber?: string;
-  bankName?: string;
-  accountNumber?: string;
 }
 
 const Checkout = () => {
@@ -56,9 +45,6 @@ const Checkout = () => {
   });
   
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({
-    paymentType: 'card'
-  });
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -72,26 +58,32 @@ const Checkout = () => {
     setCustomerInfo(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePaymentDetailChange = (field: keyof PaymentDetails, value: string) => {
-    setPaymentDetails(prev => ({ ...prev, [field]: value }));
-  };
+  const updateProductStock = async (productId: string, quantity: number) => {
+    // Get current stock
+    const { data: product, error: fetchError } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', productId)
+      .single();
 
-  const validatePaymentDetails = () => {
-    if (paymentMethod === 'cod') return true;
-    
-    const { paymentType } = paymentDetails;
-    
-    switch (paymentType) {
-      case 'card':
-        return !!(paymentDetails.cardNumber && paymentDetails.expiryDate && paymentDetails.cvv && paymentDetails.cardHolderName);
-      case 'jazzcash':
-      case 'easypaisa':
-        return !!paymentDetails.mobileNumber;
-      case 'bank':
-        return !!(paymentDetails.bankName && paymentDetails.accountNumber);
-      default:
-        return false;
+    if (fetchError) {
+      console.error('Error fetching product stock:', fetchError);
+      return false;
     }
+
+    // Update stock
+    const newStock = Math.max(0, product.stock - quantity);
+    const { error: updateError } = await supabase
+      .from('products')
+      .update({ stock: newStock })
+      .eq('id', productId);
+
+    if (updateError) {
+      console.error('Error updating product stock:', updateError);
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,11 +101,10 @@ const Checkout = () => {
       return;
     }
 
-    // Validate payment details for online payment
-    if (paymentMethod === 'online' && !validatePaymentDetails()) {
+    if (paymentMethod === 'online') {
       toast({
-        title: "Payment Details Required",
-        description: "Please fill in all payment details.",
+        title: "Payment Not Available",
+        description: "Online payment is not available right now. Please use Cash on Delivery.",
         variant: "destructive"
       });
       return;
@@ -125,119 +116,48 @@ const Checkout = () => {
       const orderNumber = `ORD-${Date.now()}`;
       const totalWithShipping = total + shippingCharges;
 
-      if (paymentMethod === 'online') {
-        console.log('Processing online payment with details:', paymentDetails);
-        
-        // Create SAFEPAY payment session
-        const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-safepay-payment', {
-          body: {
-            orderId: orderNumber,
-            amount: totalWithShipping,
-            currency: 'PKR',
-            customerEmail: customerInfo.email,
-            customerName: customerInfo.name,
-            customerPhone: customerInfo.phone,
-            description: `Order ${orderNumber}`,
-            paymentDetails: paymentDetails
-          }
-        });
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_number: orderNumber,
+          user_id: user?.id || null,
+          customer_name: customerInfo.name,
+          customer_email: customerInfo.email,
+          customer_phone: customerInfo.phone,
+          customer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.province}, ${customerInfo.country}, ${customerInfo.postalCode}`,
+          total_amount: totalWithShipping,
+          payment_method: 'cod',
+          payment_status: 'pending',
+          status: 'pending'
+        })
+        .select()
+        .single();
 
-        console.log('Payment response:', paymentData);
+      if (orderError) throw orderError;
 
-        if (paymentError) {
-          console.error('Payment error:', paymentError);
-          throw new Error('Payment processing failed. Please try again or use Cash on Delivery.');
-        }
-
-        if (paymentData?.success && paymentData?.checkout_url) {
-          // Create order record before redirecting
-          const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert({
-              order_number: orderNumber,
-              user_id: user?.id || null,
-              customer_name: customerInfo.name,
-              customer_email: customerInfo.email,
-              customer_phone: customerInfo.phone,
-              customer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.province}, ${customerInfo.country}, ${customerInfo.postalCode}`,
-              total_amount: totalWithShipping,
-              payment_method: 'online',
-              payment_status: 'pending',
-              status: 'pending'
-            })
-            .select()
-            .single();
-
-          if (orderError) {
-            console.error('Order creation error:', orderError);
-            throw new Error('Failed to create order record.');
-          }
-
-          // Create order items
-          const orderItems = items.map(item => ({
+      // Create order items and update stock
+      for (const item of items) {
+        // Create order item
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert({
             order_id: order.id,
             product_id: item.product.id,
             product_name: item.product.name,
             quantity: item.quantity,
             product_price: item.product.price
-          }));
-
-          const { error: itemsError } = await supabase
-            .from('order_items')
-            .insert(orderItems);
-
-          if (itemsError) {
-            console.error('Order items error:', itemsError);
-            throw new Error('Failed to create order items.');
-          }
-
-          // Clear cart and redirect to payment
-          clearCart();
-          window.location.href = paymentData.checkout_url;
-          return;
-        } else {
-          throw new Error('Failed to create payment session. Please try Cash on Delivery.');
-        }
-      } else {
-        // COD - create order directly
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .insert({
-            order_number: orderNumber,
-            user_id: user?.id || null,
-            customer_name: customerInfo.name,
-            customer_email: customerInfo.email,
-            customer_phone: customerInfo.phone,
-            customer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.province}, ${customerInfo.country}, ${customerInfo.postalCode}`,
-            total_amount: totalWithShipping,
-            payment_method: 'cod',
-            payment_status: 'pending',
-            status: 'pending'
-          })
-          .select()
-          .single();
-
-        if (orderError) throw orderError;
-
-        // Create order items
-        const orderItems = items.map(item => ({
-          order_id: order.id,
-          product_id: item.product.id,
-          product_name: item.product.name,
-          quantity: item.quantity,
-          product_price: item.product.price
-        }));
-
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItems);
+          });
 
         if (itemsError) throw itemsError;
 
-        // Clear cart and redirect to thank you page
-        clearCart();
-        navigate(`/order-placed?order_number=${orderNumber}`);
+        // Update product stock
+        await updateProductStock(item.product.id, item.quantity);
       }
+
+      // Clear cart and redirect to thank you page
+      clearCart();
+      navigate(`/order-placed?order_number=${orderNumber}`);
     } catch (error) {
       console.error('Checkout error:', error);
       toast({
@@ -451,156 +371,16 @@ const Checkout = () => {
                   </Label>
                 </div>
               </RadioGroup>
+
+              {paymentMethod === 'online' && (
+                <Alert className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Online payment is not available right now. You can order by "Cash on Delivery".
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
-
-            {/* Payment Details (Conditional) */}
-            {paymentMethod === 'online' && (
-              <div>
-                <h3 className="text-sm font-semibold mb-3">Payment Details</h3>
-                
-                {/* Payment Type Selection */}
-                <div className="mb-4">
-                  <Label className="text-sm">Select Payment Type</Label>
-                  <Select 
-                    value={paymentDetails.paymentType} 
-                    onValueChange={(value: 'card' | 'jazzcash' | 'easypaisa' | 'bank') => 
-                      handlePaymentDetailChange('paymentType', value)
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Choose payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="card">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4" />
-                          Credit/Debit Card
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="jazzcash">
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4" />
-                          JazzCash
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="easypaisa">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="w-4 h-4" />
-                          EasyPaisa
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="bank">
-                        <div className="flex items-center gap-2">
-                          <Building className="w-4 h-4" />
-                          Bank Transfer
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Payment Type Specific Fields */}
-                {paymentDetails.paymentType === 'card' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="cardHolderName" className="text-sm">Card Holder Name</Label>
-                      <Input
-                        id="cardHolderName"
-                        value={paymentDetails.cardHolderName || ''}
-                        onChange={(e) => handlePaymentDetailChange('cardHolderName', e.target.value)}
-                        placeholder="Enter card holder name"
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cardNumber" className="text-sm">Card Number</Label>
-                      <Input
-                        id="cardNumber"
-                        value={paymentDetails.cardNumber || ''}
-                        onChange={(e) => handlePaymentDetailChange('cardNumber', e.target.value)}
-                        placeholder="1234 5678 9012 3456"
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="expiryDate" className="text-sm">Expiry Date</Label>
-                        <Input
-                          id="expiryDate"
-                          value={paymentDetails.expiryDate || ''}
-                          onChange={(e) => handlePaymentDetailChange('expiryDate', e.target.value)}
-                          placeholder="MM/YY"
-                          required
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="cvv" className="text-sm">CVV</Label>
-                        <Input
-                          id="cvv"
-                          value={paymentDetails.cvv || ''}
-                          onChange={(e) => handlePaymentDetailChange('cvv', e.target.value)}
-                          placeholder="123"
-                          required
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {(paymentDetails.paymentType === 'jazzcash' || paymentDetails.paymentType === 'easypaisa') && (
-                  <div>
-                    <Label htmlFor="mobileNumber" className="text-sm">Mobile Number</Label>
-                    <Input
-                      id="mobileNumber"
-                      value={paymentDetails.mobileNumber || ''}
-                      onChange={(e) => handlePaymentDetailChange('mobileNumber', e.target.value)}
-                      placeholder="+92 300 1234567"
-                      required
-                      className="mt-1"
-                    />
-                  </div>
-                )}
-
-                {paymentDetails.paymentType === 'bank' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="bankName" className="text-sm">Bank Name</Label>
-                      <Select 
-                        value={paymentDetails.bankName || ''} 
-                        onValueChange={(value) => handlePaymentDetailChange('bankName', value)}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select your bank" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hbl">HBL Bank</SelectItem>
-                          <SelectItem value="ubl">UBL Bank</SelectItem>
-                          <SelectItem value="mcb">MCB Bank</SelectItem>
-                          <SelectItem value="allied">Allied Bank</SelectItem>
-                          <SelectItem value="askari">Askari Bank</SelectItem>
-                          <SelectItem value="faysal">Faysal Bank</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="accountNumber" className="text-sm">Account Number</Label>
-                      <Input
-                        id="accountNumber"
-                        value={paymentDetails.accountNumber || ''}
-                        onChange={(e) => handlePaymentDetailChange('accountNumber', e.target.value)}
-                        placeholder="Enter your account number"
-                        required
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
 
             <Button 
               disabled={isProcessing} 

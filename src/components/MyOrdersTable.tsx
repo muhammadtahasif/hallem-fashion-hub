@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Package, CreditCard, Truck } from "lucide-react";
+import { Eye, Package, CreditCard, Truck, Mail, Phone, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,10 @@ interface Order {
   status: string;
   payment_method: string;
   payment_status: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  customer_address: string;
   created_at: string;
   order_items: Array<{
     product_id: string;
@@ -126,7 +130,7 @@ const MyOrdersTable = () => {
             </div>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
               <div>
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
                   <Package className="w-4 h-4" />
@@ -173,6 +177,27 @@ const MyOrdersTable = () => {
                       Payment {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
                     </Badge>
                   )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Customer Details
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3 h-3 text-gray-500" />
+                    <span>{order.customer_email}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3 h-3 text-gray-500" />
+                    <span>{order.customer_phone}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-3 h-3 text-gray-500 mt-0.5" />
+                    <span className="text-xs">{order.customer_address}</span>
+                  </div>
                 </div>
               </div>
             </div>

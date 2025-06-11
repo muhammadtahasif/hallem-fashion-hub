@@ -197,7 +197,8 @@ const Shop = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+            {/* Mobile: 2 products per row, Desktop: 3 products per row */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 md:gap-6">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="group hover:shadow-lg transition-shadow">
                   <CardContent className="p-0">
@@ -210,27 +211,27 @@ const Shop = () => {
                         />
                       </div>
                     </Link>
-                    <div className="p-3 md:p-4">
-                      <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="p-2 md:p-4">
+                      <div className="flex items-start justify-between mb-1 md:mb-2 gap-1">
                         <Link to={`/product/${product.id}`}>
-                          <h3 className="font-semibold text-sm md:text-lg hover:text-rose-500 transition-colors line-clamp-2">
+                          <h3 className="font-semibold text-xs md:text-lg hover:text-rose-500 transition-colors line-clamp-2">
                             {product.name}
                           </h3>
                         </Link>
                         {product.featured && (
-                          <Badge variant="secondary" className="text-xs flex-shrink-0">
+                          <Badge variant="secondary" className="text-xs flex-shrink-0 hidden md:flex">
                             <Star className="w-2 h-2 md:w-3 md:h-3 mr-1" />
                             Featured
                           </Badge>
                         )}
                       </div>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                        <div className="flex items-center space-x-1 md:space-x-2">
-                          <span className="text-sm md:text-lg font-bold text-rose-500">
+                      <div className="flex flex-col gap-1 md:gap-2">
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs md:text-lg font-bold text-rose-500">
                             PKR {product.price.toLocaleString()}
                           </span>
                           {product.original_price && product.original_price > product.price && (
-                            <span className="text-xs md:text-sm text-gray-500 line-through">
+                            <span className="text-xs text-gray-500 line-through">
                               PKR {product.original_price.toLocaleString()}
                             </span>
                           )}
@@ -238,9 +239,9 @@ const Shop = () => {
                         <Button
                           size="sm"
                           onClick={() => handleAddToCart(product)}
-                          className="bg-rose-500 hover:bg-rose-600 text-xs px-2 py-1 md:px-3 md:py-2 w-full sm:w-auto"
+                          className="bg-rose-500 hover:bg-rose-600 text-xs px-2 py-1 w-full"
                         >
-                          <ShoppingCart className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                          <ShoppingCart className="w-3 h-3 mr-1" />
                           Add
                         </Button>
                       </div>
