@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -534,95 +533,6 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
-
-  function SidebarContent() {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">Admin Panel</h2>
-        </div>
-        <nav className="flex-1 p-4">
-          <div className="space-y-2">
-            <Button
-              variant={activeTab === "reports" ? "default" : "ghost"}
-              className="w-full justify-start text-left"
-              onClick={() => {
-                setActiveTab("reports");
-                setIsSidebarOpen(false);
-              }}
-            >
-              Reports
-            </Button>
-            <Button
-              variant={activeTab === "orders" ? "default" : "ghost"}
-              className="w-full justify-start text-left"
-              onClick={() => {
-                setActiveTab("orders");
-                setIsSidebarOpen(false);
-              }}
-            >
-              Orders
-            </Button>
-            <Button
-              variant={activeTab === "products" ? "default" : "ghost"}
-              className="w-full justify-start text-left"
-              onClick={() => {
-                setActiveTab("products");
-                setIsSidebarOpen(false);
-              }}
-            >
-              Products
-            </Button>
-            <Button
-              variant={activeTab === "categories" ? "default" : "ghost"}
-              className="w-full justify-start text-left"
-              onClick={() => {
-                setActiveTab("categories");
-                setIsSidebarOpen(false);
-              }}
-            >
-              Categories
-            </Button>
-            <Button
-              variant={activeTab === "messages" ? "default" : "ghost"}
-              className="w-full justify-start text-left"
-              onClick={() => {
-                setActiveTab("messages");
-                setIsSidebarOpen(false);
-              }}
-            >
-              Messages
-            </Button>
-            <Button
-              variant={activeTab === "settings" ? "default" : "ghost"}
-              className="w-full justify-start text-left"
-              onClick={() => {
-                setActiveTab("settings");
-                setIsSidebarOpen(false);
-              }}
-            >
-              Settings
-            </Button>
-          </div>
-        </nav>
-      </div>
-    );
-  }
-
-  function TabTriggerComponent({ value, children }: { value: string; children: React.ReactNode }) {
-    return (
-      <TabsTrigger 
-        value={value} 
-        className="flex-1 text-xs sm:text-sm px-2 sm:px-4 py-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white"
-        onClick={() => {
-          setActiveTab(value);
-          if (isMobile) setIsSidebarOpen(false);
-        }}
-      >
-        {children}
-      </TabsTrigger>
-    );
-  }
 };
 
 export default AdminDashboard;
