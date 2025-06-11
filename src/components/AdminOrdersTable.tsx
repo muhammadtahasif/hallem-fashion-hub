@@ -263,14 +263,16 @@ const AdminOrdersTable = () => {
 
   const handleStatusFilterChange = (value: string) => {
     console.log('Status filter changing to:', value);
-    if (value && value.trim() !== '') {
+    // Only update if value is valid and not empty
+    if (value && value.trim() !== '' && value !== statusFilter) {
       setStatusFilter(value);
     }
   };
 
   const handleDateFilterChange = (value: string) => {
     console.log('Date filter changing to:', value);
-    if (value && value.trim() !== '') {
+    // Only update if value is valid and not empty
+    if (value && value.trim() !== '' && value !== dateFilter) {
       setDateFilter(value);
     }
   };
