@@ -19,6 +19,7 @@ import ReportsSection from "@/components/ReportsSection";
 import AdminOrdersTable from "@/components/AdminOrdersTable";
 import AdminMessagesSection from "@/components/AdminMessagesSection";
 import AdminMessagesDetail from "@/components/AdminMessagesDetail";
+import AdminReturnsTable from "@/components/AdminReturnsTable";
 import { Trash2, Edit, Truck, Menu, Home } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -231,6 +232,16 @@ const AdminDashboard = () => {
             Messages
           </Button>
           <Button
+            variant={activeTab === "returns" ? "default" : "ghost"}
+            className="w-full justify-start text-left"
+            onClick={() => {
+              setActiveTab("returns");
+              setIsSidebarOpen(false);
+            }}
+          >
+            Returns
+          </Button>
+          <Button
             variant={activeTab === "settings" ? "default" : "ghost"}
             className="w-full justify-start text-left"
             onClick={() => {
@@ -286,12 +297,13 @@ const AdminDashboard = () => {
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {!isMobile && (
-            <TabsList className="grid w-full grid-cols-6 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-7 h-auto p-1">
               <TabTriggerComponent value="reports">Reports</TabTriggerComponent>
               <TabTriggerComponent value="orders">Orders</TabTriggerComponent>
               <TabTriggerComponent value="products">Products</TabTriggerComponent>
               <TabTriggerComponent value="categories">Categories</TabTriggerComponent>
               <TabTriggerComponent value="messages">Messages</TabTriggerComponent>
+              <TabTriggerComponent value="returns">Returns</TabTriggerComponent>
               <TabTriggerComponent value="settings">Settings</TabTriggerComponent>
             </TabsList>
           )}
@@ -393,6 +405,11 @@ const AdminDashboard = () => {
           {/* Messages Tab */}
           <TabsContent value="messages" className="space-y-6">
             <AdminMessagesDetail />
+          </TabsContent>
+
+          {/* Returns Tab */}
+          <TabsContent value="returns" className="space-y-6">
+            <AdminReturnsTable />
           </TabsContent>
 
           {/* Settings Tab */}

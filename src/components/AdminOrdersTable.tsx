@@ -58,6 +58,13 @@ const AdminOrdersTable = () => {
 
   const fetchOrders = async () => {
     try {
+      // Get returned order IDs to exclude them from the main orders view
+      const { data: returnedOrders } = await supabase
+        .from('returns')
+        .select('order_id');
+      
+      const returnedOrderIds = new Set(returnedOrders?.map(r => r.order_id) || []);
+
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -82,7 +89,10 @@ const AdminOrdersTable = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      
+      // Filter out returned orders
+      const filteredOrders = data?.filter(order => !returnedOrderIds.has(order.id)) || [];
+      setOrders(filteredOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({

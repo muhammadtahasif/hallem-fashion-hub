@@ -9,7 +9,9 @@ interface ReportsData {
   totalProducts: number;
   totalCategories: number;
   totalSubcategories: number;
+  totalReturns: number;
   totalRevenue: number;
+  returnsThisMonth: number;
   ordersThisMonth: number;
   ordersToday: number;
   topSellingProducts: Array<{
@@ -17,6 +19,10 @@ interface ReportsData {
     total_sold: number;
   }>;
   ordersByStatus: Array<{
+    status: string;
+    count: number;
+  }>;
+  returnsByStatus: Array<{
     status: string;
     count: number;
   }>;
@@ -32,11 +38,14 @@ const ReportsSection = () => {
     totalProducts: 0,
     totalCategories: 0,
     totalSubcategories: 0,
+    totalReturns: 0,
     totalRevenue: 0,
+    returnsThisMonth: 0,
     ordersThisMonth: 0,
     ordersToday: 0,
     topSellingProducts: [],
     ordersByStatus: [],
+    returnsByStatus: [],
     revenueByMonth: []
   });
   const [loading, setLoading] = useState(true);
@@ -50,20 +59,38 @@ const ReportsSection = () => {
       setLoading(true);
 
       // Fetch basic counts
-      const [ordersCount, productsCount, categoriesCount, subcategoriesCount] = await Promise.all([
+      const [ordersCount, productsCount, categoriesCount, subcategoriesCount, returnsCount] = await Promise.all([
         supabase.from('orders').select('*', { count: 'exact', head: true }),
         supabase.from('products').select('*', { count: 'exact', head: true }),
         supabase.from('categories').select('*', { count: 'exact', head: true }),
-        supabase.from('subcategories').select('*', { count: 'exact', head: true })
+        supabase.from('subcategories').select('*', { count: 'exact', head: true }),
+        supabase.from('returns').select('*', { count: 'exact', head: true })
       ]);
 
-      // Fetch orders data
+      // Fetch orders data (excluding returned orders from revenue calculation)
       const { data: orders } = await supabase
         .from('orders')
-        .select('total_amount, created_at, status');
+        .select('total_amount, created_at, status, id');
 
-      // Calculate revenue and date-based metrics
-      const totalRevenue = orders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      // Get returned order IDs to exclude from revenue
+      const { data: returnedOrders } = await supabase
+        .from('returns')
+        .select('order_id');
+      
+      const returnedOrderIds = new Set(returnedOrders?.map(r => r.order_id) || []);
+
+      // Fetch returns data
+      const { data: returns } = await supabase
+        .from('returns')
+        .select('status, created_at');
+
+      // Calculate revenue and date-based metrics (excluding returned orders)
+      const totalRevenue = orders?.reduce((sum, order) => {
+        if (!returnedOrderIds.has(order.id)) {
+          return sum + order.total_amount;
+        }
+        return sum;
+      }, 0) || 0;
       
       const today = new Date().toDateString();
       const ordersToday = orders?.filter(order => 
@@ -75,6 +102,22 @@ const ReportsSection = () => {
       const ordersThisMonth = orders?.filter(order => 
         new Date(order.created_at) >= thisMonth
       ).length || 0;
+
+      // Returns this month
+      const returnsThisMonth = returns?.filter(ret => 
+        new Date(ret.created_at) >= thisMonth
+      ).length || 0;
+
+      // Returns by status
+      const returnsByStatus = returns?.reduce((acc, ret) => {
+        const existing = acc.find(item => item.status === ret.status);
+        if (existing) {
+          existing.count++;
+        } else {
+          acc.push({ status: ret.status, count: 1 });
+        }
+        return acc;
+      }, [] as Array<{ status: string; count: number }>) || [];
 
       // Orders by status
       const ordersByStatus = orders?.reduce((acc, order) => {
@@ -110,11 +153,14 @@ const ReportsSection = () => {
         totalProducts: productsCount.count || 0,
         totalCategories: categoriesCount.count || 0,
         totalSubcategories: subcategoriesCount.count || 0,
+        totalReturns: returnsCount.count || 0,
         totalRevenue,
+        returnsThisMonth,
         ordersThisMonth,
         ordersToday,
         topSellingProducts,
         ordersByStatus,
+        returnsByStatus,
         revenueByMonth: []
       });
 
@@ -188,6 +234,33 @@ const ReportsSection = () => {
         </Card>
       </div>
 
+      {/* Returns Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl lg:text-2xl font-bold text-red-600">{reportsData.totalReturns}</div>
+                <p className="text-xs lg:text-sm text-gray-600">Total Returns</p>
+              </div>
+              <Package className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl lg:text-2xl font-bold text-orange-600">{reportsData.returnsThisMonth}</div>
+                <p className="text-xs lg:text-sm text-gray-600">Returns This Month</p>
+              </div>
+              <Calendar className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Revenue & Time-based Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
@@ -230,7 +303,7 @@ const ReportsSection = () => {
       </div>
 
       {/* Detailed Reports */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Selling Products */}
         <Card>
           <CardHeader>
@@ -266,6 +339,27 @@ const ReportsSection = () => {
                   <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium capitalize">{status.status}</span>
                     <span className="text-sm text-gray-600">{status.count} orders</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Returns by Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Returns by Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {reportsData.returnsByStatus.length === 0 ? (
+                <p className="text-gray-500">No return data available</p>
+              ) : (
+                reportsData.returnsByStatus.map((status, index) => (
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium capitalize">{status.status}</span>
+                    <span className="text-sm text-gray-600">{status.count} returns</span>
                   </div>
                 ))
               )}

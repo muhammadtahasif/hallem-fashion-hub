@@ -383,6 +383,86 @@ export type Database = {
         }
         Relationships: []
       }
+      return_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_name: string
+          product_price: number
+          quantity: number
+          return_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_name: string
+          product_price: number
+          quantity?: number
+          return_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_name?: string
+          product_price?: number
+          quantity?: number
+          return_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      returns: {
+        Row: {
+          created_at: string
+          customer_address: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          order_id: string
+          order_number: string
+          reason: string | null
+          status: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_address: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          order_id: string
+          order_number: string
+          reason?: string | null
+          status?: string | null
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_address?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          order_id?: string
+          order_number?: string
+          reason?: string | null
+          status?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           created_at: string

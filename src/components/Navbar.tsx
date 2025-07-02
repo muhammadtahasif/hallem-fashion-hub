@@ -81,6 +81,9 @@ const Navbar = () => {
             <Link to="/contact" className="text-gray-700 hover:text-rose-500 transition-colors text-sm">
               Contact
             </Link>
+            <Link to="/returns" className="text-gray-700 hover:text-rose-500 transition-colors text-sm">
+              Returns
+            </Link>
           </div>
 
           {/* Search Bar - Desktop */}
@@ -231,6 +234,9 @@ const Navbar = () => {
                     </Link>
                     <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="block text-lg font-medium">
                       Contact
+                    </Link>
+                    <Link to="/returns" onClick={() => setIsMobileMenuOpen(false)} className="block text-lg font-medium">
+                      Returns
                     </Link>
                     <Link to="/track-order" onClick={() => setIsMobileMenuOpen(false)} className="block text-lg font-medium">
                       Track Order

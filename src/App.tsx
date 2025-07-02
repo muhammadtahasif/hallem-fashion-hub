@@ -22,6 +22,7 @@ import Signup from "./pages/Signup";
 import Account from "./pages/Account";
 import AdminDashboard from "./pages/AdminDashboard";
 import Contact from "./pages/Contact";
+import Returns from "./pages/Returns";
 import OrderTracking from "./pages/OrderTracking";
 import EmailVerification from "./pages/EmailVerification";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,7 @@ const App = () => (
                     <Route path="/account" element={<Account />} />
                     <Route path="/admin" element={<AdminDashboard />} />
                     <Route path="/contact" element={<Contact />} />
+                    <Route path="/returns" element={<Returns />} />
                     <Route path="/track-order" element={<OrderTracking />} />
                     <Route path="/verify-email" element={<EmailVerification />} />
                     <Route path="*" element={<NotFound />} />
