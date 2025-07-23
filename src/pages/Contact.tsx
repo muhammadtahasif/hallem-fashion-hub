@@ -160,7 +160,7 @@ const Contact = () => {
                   <a href="/shop">🛍️ Browse Products</a>
                 </Button>
                 <Button variant="outline" className="w-full justify-start text-sm" asChild>
-                  <a href="tel:+923090449955">📞 Call Us Now</a>
+                  <a href="tel:+923234882256">📞 Call Us Now</a>
                 </Button>
               </div>
             </div>
