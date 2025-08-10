@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import heroImage from "@/assets/hero-fashion.jpg";
 
 interface Product {
   id: string;
@@ -109,7 +110,7 @@ const Index = () => {
             <div className="relative flex justify-center lg:justify-end">
               <div className="relative w-full max-w-xs sm:max-w-sm lg:max-w-md">
                 <img 
-                  src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&h=500&fit=crop" 
+                  src={heroImage} 
                   alt="Fashion Collection" 
                   className="w-full h-auto rounded-lg shadow-xl object-cover aspect-[3/4]" 
                 />
