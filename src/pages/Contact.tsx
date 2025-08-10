@@ -154,10 +154,10 @@ const Contact = () => {
               <h3 className="text-lg sm:text-xl font-semibold font-serif mb-3 sm:mb-4">Need Quick Help?</h3>
               <div className="space-y-3">
                 <Button variant="outline" className="w-full justify-start text-sm" asChild>
-                  <a href="/track-order">📦 Track Your Order</a>
+                  <a href="https://azfabrics.com/track-order">📦 Track Your Order</a>
                 </Button>
                 <Button variant="outline" className="w-full justify-start text-sm" asChild>
-                  <a href="/shop">🛍️ Browse Products</a>
+                  <a href="https://azfabrics.com/shop">🛍️ Browse Products</a>
                 </Button>
                 <Button variant="outline" className="w-full justify-start text-sm" asChild>
                   <a href="tel:+923234882256">📞 Call Us Now</a>
