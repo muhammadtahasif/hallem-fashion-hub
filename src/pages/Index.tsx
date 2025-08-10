@@ -109,7 +109,7 @@ const Index = () => {
             <div className="relative flex justify-center lg:justify-end">
               <div className="relative w-full max-w-xs sm:max-w-sm lg:max-w-md">
                 <img 
-                  src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&h=500&fit=crop" 
+                  src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&h=500&fit=crop" 
                   alt="Fashion Collection" 
                   className="w-full h-auto rounded-lg shadow-xl object-cover aspect-[3/4]" 
                 />
