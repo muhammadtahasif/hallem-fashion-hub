@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ interface Category {
 }
 
 const Shop = () => {
+  const PAGE_SIZE = 10;
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -46,12 +47,16 @@ const Shop = () => {
   const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
   const { toast } = useToast();
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const categorySlug = searchParams.get('category');
 
   useEffect(() => {
     fetchCategories();
-    fetchProducts();
+    resetAndFetch();
   }, []);
 
   useEffect(() => {
@@ -65,8 +70,13 @@ const Shop = () => {
   }, [categorySlug, categories]);
 
   useEffect(() => {
-    filterProducts();
-  }, [products, searchTerm, selectedCategoryId, selectedSubcategories]);
+    setFilteredProducts(products);
+  }, [products]);
+
+  useEffect(() => {
+    // Refetch when filters/search change
+    resetAndFetch();
+  }, [searchTerm, selectedCategoryId, selectedSubcategories]);
 
   const fetchCategories = async () => {
     try {
@@ -82,29 +92,73 @@ const Shop = () => {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async (pageToLoad: number) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
-        .select(`
-          *,
-          categories (
-            id,
-            name,
-            slug
-          )
-        `)
-        .gt('stock', 0)
-        .order('created_at', { ascending: false });
+        .select('*')
+        .gt('stock', 0);
+
+      if (selectedCategoryId) {
+        query = query.eq('category_id', selectedCategoryId);
+      }
+
+      if (selectedSubcategories.length > 0) {
+        query = query.in('subcategory_id', selectedSubcategories);
+      }
+
+      if (searchTerm.trim()) {
+        query = query.ilike('name', `%${searchTerm.trim()}%`);
+      }
+
+      const from = pageToLoad * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      setProducts(data || []);
+      return (data as Product[]) || [];
     } catch (error) {
       console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
+      return [];
     }
-  };
+  }, [selectedCategoryId, selectedSubcategories, searchTerm]);
+
+  const resetAndFetch = useCallback(async () => {
+    setLoading(true);
+    setPage(0);
+    setHasMore(true);
+    const firstPage = await fetchProducts(0);
+    setProducts(firstPage);
+    setHasMore(firstPage.length === PAGE_SIZE);
+    setLoading(false);
+    setIsLoadingMore(false);
+  }, [fetchProducts]);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    const nextPageIndex = page + 1;
+    const nextPage = await fetchProducts(nextPageIndex);
+    setProducts((prev) => [...prev, ...nextPage]);
+    setPage(nextPageIndex);
+    setHasMore(nextPage.length === PAGE_SIZE);
+    setIsLoadingMore(false);
+  }, [page, hasMore, isLoadingMore, fetchProducts]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadMore();
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const filterProducts = () => {
     let filtered = products;
@@ -250,6 +304,14 @@ const Shop = () => {
                 </Card>
               ))}
             </div>
+            <div ref={sentinelRef} className="h-1" aria-hidden />
+            {hasMore && (
+              <div className="mt-6 flex justify-center">
+                <Button onClick={loadMore} disabled={isLoadingMore} variant="outline">
+                  {isLoadingMore ? 'Loading...' : 'Load more'}
+                </Button>
+              </div>
+            )}
 
             {filteredProducts.length === 0 && (
               <div className="text-center py-12">
