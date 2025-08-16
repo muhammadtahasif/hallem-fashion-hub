@@ -150,15 +150,21 @@ const Shop = () => {
 
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el || !hasMore || isLoadingMore) return;
+    
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
+      const entry = entries[0];
+      if (entry.isIntersecting && hasMore && !isLoadingMore) {
         loadMore();
       }
-    }, { rootMargin: '200px' });
+    }, { 
+      rootMargin: '100px',
+      threshold: 0.1
+    });
+    
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loadMore]);
+  }, [hasMore, isLoadingMore]);
 
   const filterProducts = () => {
     let filtered = products;
