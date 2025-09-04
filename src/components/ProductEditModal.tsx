@@ -18,6 +18,7 @@ interface Product {
   stock: number;
   image_url: string;
   images?: string[];
+  colors?: string[];
   featured: boolean;
   category_id?: string;
   subcategory_id?: string;
@@ -52,6 +53,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [productImages, setProductImages] = useState<string[]>([]);
+  const [productColors, setProductColors] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -95,6 +97,9 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
         });
       }
       setProductImages(allImages.length > 0 ? allImages : [""]);
+      
+      // Set colors
+      setProductColors(product.colors && product.colors.length > 0 ? product.colors : [""]);
     }
   }, [product]);
 
@@ -137,6 +142,21 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     setProductImages(newImages);
   };
 
+  const handleAddColor = () => {
+    setProductColors([...productColors, ""]);
+  };
+
+  const handleRemoveColor = (index: number) => {
+    const newColors = productColors.filter((_, i) => i !== index);
+    setProductColors(newColors);
+  };
+
+  const handleColorChange = (index: number, value: string) => {
+    const newColors = [...productColors];
+    newColors[index] = value;
+    setProductColors(newColors);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product) return;
@@ -144,8 +164,9 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     setIsLoading(true);
 
     try {
-      // Filter out empty image URLs
+      // Filter out empty image URLs and colors
       const validImages = productImages.filter(img => img.trim() !== "");
+      const validColors = productColors.filter(color => color.trim() !== "");
       const mainImage = validImages[0] || formData.image_url;
 
       const { error } = await supabase
@@ -158,6 +179,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
           stock: formData.stock,
           image_url: mainImage,
           images: validImages.length > 0 ? validImages : null,
+          colors: validColors.length > 0 ? validColors : null,
           featured: formData.featured,
           category_id: formData.category_id || null,
           subcategory_id: formData.subcategory_id || null,
@@ -360,6 +382,41 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Image
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Available Colors
+            </label>
+            <div className="space-y-2">
+              {productColors.map((color, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={color}
+                    onChange={(e) => handleColorChange(index, e.target.value)}
+                    placeholder={`Color ${index + 1} (e.g., Red, Blue, Green)`}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemoveColor(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddColor}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Color
               </Button>
             </div>
           </div>

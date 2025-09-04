@@ -10,6 +10,7 @@ interface CartItem {
   price: number;
   quantity: number;
   image_url?: string;
+  selected_color?: string;
 }
 
 interface CartItemCardProps {
@@ -40,6 +41,9 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemove }: CartItemCardProps) =
             {/* Product Details */}
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium text-gray-900 truncate">{item.name}</h3>
+              {item.selected_color && (
+                <p className="text-xs text-gray-500">Color: {item.selected_color}</p>
+              )}
               <p className="text-sm text-rose-600 font-semibold">PKR {item.price.toLocaleString()}</p>
               
               {/* Quantity Controls - Compact */}
@@ -105,6 +109,9 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemove }: CartItemCardProps) =
           {/* Product Details */}
           <div className="flex-1">
             <h3 className="text-lg font-medium text-gray-900">{item.name}</h3>
+            {item.selected_color && (
+              <p className="text-sm text-gray-500">Color: {item.selected_color}</p>
+            )}
             <p className="text-lg text-rose-600 font-semibold">PKR {item.price.toLocaleString()}</p>
           </div>
           

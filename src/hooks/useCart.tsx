@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -6,14 +5,18 @@ import { useToast } from './use-toast';
 
 interface CartItem {
   id: string;
+  user_id: string | null;
   product_id: string;
   quantity: number;
+  selected_color?: string;
+  created_at: string;
   product?: {
     id: string;
     name: string;
     price: number;
     image_url: string;
     stock: number;
+    colors?: string[];
   };
 }
 
@@ -21,7 +24,7 @@ interface CartContextType {
   items: CartItem[];
   loading: boolean;
   total: number;
-  addToCart: (productId: string, quantity?: number) => Promise<void>;
+  addToCart: (productId: string, quantity?: number, selectedColor?: string) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -61,14 +64,19 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         .from('cart_items')
         .select(`
           id,
+          user_id,
+          session_id,
           product_id,
           quantity,
+          selected_color,
+          created_at,
           products (
             id,
             name,
             price,
             image_url,
-            stock
+            stock,
+            colors
           )
         `);
 
@@ -97,10 +105,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     fetchCartItems();
   }, [user]);
 
-  const addToCart = async (productId: string, quantity = 1) => {
+  const addToCart = async (productId: string, quantity = 1, selectedColor?: string) => {
     try {
-      // Check if item already exists in cart first
-      const existingItem = items.find(item => item.product_id === productId);
+      // Check if item with same product and color already exists in cart
+      const existingItem = items.find(item => 
+        item.product_id === productId && 
+        item.selected_color === selectedColor
+      );
       
       if (existingItem) {
         // Update existing item quantity
@@ -112,6 +123,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const cartData: any = {
         product_id: productId,
         quantity,
+        selected_color: selectedColor || null,
       };
 
       if (user) {

@@ -27,6 +27,7 @@ interface Order {
     product_name: string;
     quantity: number;
     product_price: number;
+    selected_color?: string;
     products?: {
       sku: string;
     };
@@ -81,6 +82,7 @@ const AdminOrdersTable = () => {
             product_name,
             quantity,
             product_price,
+            selected_color,
             products (
               sku
             )
@@ -518,6 +520,9 @@ const AdminOrdersTable = () => {
                         {order.order_items.map((item, index) => (
                           <div key={index}>
                             {item.product_name} (x{item.quantity})
+                            {item.selected_color && (
+                              <div className="text-xs text-gray-500">Color: {item.selected_color}</div>
+                            )}
                           </div>
                         ))}
                       </div>
