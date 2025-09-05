@@ -26,7 +26,6 @@ interface Order {
     product_name: string;
     quantity: number;
     product_price: number;
-    selected_color?: string;
   }>;
 }
 
@@ -52,8 +51,7 @@ const MyOrdersTable = () => {
             product_id,
             product_name,
             quantity,
-            product_price,
-            selected_color
+            product_price
           )
         `)
         .eq('user_id', user?.id)
@@ -149,9 +147,6 @@ const MyOrdersTable = () => {
                           {item.product_name}
                         </Link>
                         <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                        {item.selected_color && (
-                          <p className="text-xs text-gray-500">Color: {item.selected_color}</p>
-                        )}
                       </div>
                       <span className="font-medium">
                         PKR {(item.product_price * item.quantity).toLocaleString()}

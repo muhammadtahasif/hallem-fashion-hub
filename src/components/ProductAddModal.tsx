@@ -33,7 +33,6 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [images, setImages] = useState<string[]>(['']);
-  const [colors, setColors] = useState<string[]>(['']);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -90,7 +89,6 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
       subcategory_id: "",
     });
     setImages(['']);
-    setColors(['']);
   };
 
   const generateSlug = (name: string) => {
@@ -122,23 +120,6 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
     const newImages = [...images];
     newImages[index] = value;
     setImages(newImages);
-  };
-
-  const addColorField = () => {
-    setColors([...colors, '']);
-  };
-
-  const removeColorField = (index: number) => {
-    if (colors.length > 1) {
-      const newColors = colors.filter((_, i) => i !== index);
-      setColors(newColors);
-    }
-  };
-
-  const updateColor = (index: number, value: string) => {
-    const newColors = [...colors];
-    newColors[index] = value;
-    setColors(newColors);
   };
 
   const formatText = (format: string) => {
@@ -191,7 +172,6 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
       const slug = generateSlug(formData.name);
       const sku = generateSKU(formData.name);
       const validImages = images.filter(img => img.trim() !== '');
-      const validColors = colors.filter(color => color.trim() !== '');
       
       const { error } = await supabase
         .from('products')
@@ -203,7 +183,6 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
           stock: formData.stock,
           image_url: validImages[0] || '',
           images: validImages.length > 1 ? validImages : null,
-          colors: validColors.length > 0 ? validColors : null,
           featured: formData.featured,
           category_id: formData.category_id || null,
           subcategory_id: formData.subcategory_id || null,
@@ -403,39 +382,6 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
                       size="sm"
                       variant="outline"
                       onClick={() => removeImageField(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium">
-                Available Colors
-              </label>
-              <Button type="button" size="sm" variant="outline" onClick={addColorField}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Color
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {colors.map((color, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={color}
-                    onChange={(e) => updateColor(index, e.target.value)}
-                    placeholder={`Color ${index + 1} (e.g., Red, Blue, Green)`}
-                  />
-                  {colors.length > 1 && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => removeColorField(index)}
                     >
                       <X className="h-4 w-4" />
                     </Button>

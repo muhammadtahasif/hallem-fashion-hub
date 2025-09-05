@@ -23,7 +23,6 @@ interface Product {
   stock: number;
   image_url: string;
   images?: string[];
-  colors?: string[];
   featured: boolean;
   sku: string;
   categories?: {
@@ -39,7 +38,6 @@ const ProductDetail = () => {
   const { toast } = useToast();
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [selectedColor, setSelectedColor] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
@@ -67,11 +65,6 @@ const ProductDetail = () => {
 
       if (error) throw error;
       setProduct(data);
-      
-      // Set default color if available
-      if (data?.colors && data.colors.length > 0) {
-        setSelectedColor(data.colors[0]);
-      }
     } catch (error) {
       console.error('Error fetching product:', error);
       toast({
@@ -97,7 +90,7 @@ const ProductDetail = () => {
       return;
     }
 
-    addToCart(product.id, quantity, selectedColor);
+    addToCart(product.id, quantity);
     toast({
       title: "Added to Cart",
       description: `${quantity} x ${product.name} added to your cart.`,
@@ -224,35 +217,6 @@ const ProductDetail = () => {
                 <div className="text-gray-700 leading-relaxed">
                   {formatDescription(product.description)}
                 </div>
-              </div>
-            )}
-
-            {/* Color Selection */}
-            {product.colors && product.colors.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Available Colors</h3>
-                <div className="flex flex-wrap gap-2">
-                  {product.colors.map((color, index) => (
-                    <Button
-                      key={index}
-                      variant={selectedColor === color ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedColor(color)}
-                      className={`px-4 py-2 ${
-                        selectedColor === color 
-                          ? 'bg-rose-500 hover:bg-rose-600 text-white' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      {color}
-                    </Button>
-                  ))}
-                </div>
-                {selectedColor && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Selected: <span className="font-medium">{selectedColor}</span>
-                  </p>
-                )}
               </div>
             )}
 

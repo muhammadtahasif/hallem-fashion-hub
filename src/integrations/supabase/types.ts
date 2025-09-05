@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
+  // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -20,7 +20,6 @@ export type Database = {
           id: string
           product_id: string
           quantity: number
-          selected_color: string | null
           session_id: string | null
           updated_at: string
           user_id: string | null
@@ -30,7 +29,6 @@ export type Database = {
           id?: string
           product_id: string
           quantity?: number
-          selected_color?: string | null
           session_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -40,7 +38,6 @@ export type Database = {
           id?: string
           product_id?: string
           quantity?: number
-          selected_color?: string | null
           session_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -202,7 +199,6 @@ export type Database = {
           product_name: string
           product_price: number
           quantity: number
-          selected_color: string | null
         }
         Insert: {
           created_at?: string
@@ -212,7 +208,6 @@ export type Database = {
           product_name: string
           product_price: number
           quantity?: number
-          selected_color?: string | null
         }
         Update: {
           created_at?: string
@@ -222,7 +217,6 @@ export type Database = {
           product_name?: string
           product_price?: number
           quantity?: number
-          selected_color?: string | null
         }
         Relationships: [
           {
@@ -292,7 +286,6 @@ export type Database = {
       products: {
         Row: {
           category_id: string | null
-          colors: string[] | null
           created_at: string
           description: string | null
           featured: boolean | null
@@ -310,7 +303,6 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
-          colors?: string[] | null
           created_at?: string
           description?: string | null
           featured?: boolean | null
@@ -328,7 +320,6 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
-          colors?: string[] | null
           created_at?: string
           description?: string | null
           featured?: boolean | null
