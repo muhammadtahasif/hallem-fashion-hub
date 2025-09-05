@@ -60,9 +60,11 @@ const Cart = () => {
                   item={{
                     id: item.id,
                     name: item.product?.name || '',
-                    price: item.product?.price || 0,
+                    price: item.variant_price || item.product?.price || 0,
                     quantity: item.quantity,
-                    image_url: item.product?.image_url
+                    image_url: item.product?.image_url,
+                    selected_color: item.selected_color,
+                    selected_size: item.selected_size
                   }}
                   onUpdateQuantity={updateQuantity}
                   onRemove={removeFromCart}

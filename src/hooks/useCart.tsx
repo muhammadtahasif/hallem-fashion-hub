@@ -8,6 +8,10 @@ interface CartItem {
   id: string;
   product_id: string;
   quantity: number;
+  variant_id?: string;
+  selected_color?: string;
+  selected_size?: string;
+  variant_price?: number;
   product?: {
     id: string;
     name: string;
@@ -21,7 +25,7 @@ interface CartContextType {
   items: CartItem[];
   loading: boolean;
   total: number;
-  addToCart: (productId: string, quantity?: number) => Promise<void>;
+  addToCart: (productId: string, quantity?: number, variantId?: string, selectedColor?: string, selectedSize?: string) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -63,6 +67,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           id,
           product_id,
           quantity,
+          variant_id,
+          selected_color,
+          selected_size,
+          variant_price,
           products (
             id,
             name,
@@ -97,10 +105,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     fetchCartItems();
   }, [user]);
 
-  const addToCart = async (productId: string, quantity = 1) => {
+  const addToCart = async (productId: string, quantity = 1, variantId?: string, selectedColor?: string, selectedSize?: string) => {
     try {
-      // Check if item already exists in cart first
-      const existingItem = items.find(item => item.product_id === productId);
+      // Check if item already exists in cart (including variant matching)
+      const existingItem = items.find(item => 
+        item.product_id === productId && 
+        item.variant_id === variantId &&
+        item.selected_color === selectedColor &&
+        item.selected_size === selectedSize
+      );
       
       if (existingItem) {
         // Update existing item quantity
@@ -108,10 +121,26 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
+      // Get variant price if variant is selected
+      let variantPrice = null;
+      if (variantId) {
+        const { data: variantData } = await supabase
+          .from('product_variants')
+          .select('price')
+          .eq('id', variantId)
+          .single();
+        
+        variantPrice = variantData?.price;
+      }
+
       // Add new item to cart
       const cartData: any = {
         product_id: productId,
         quantity,
+        variant_id: variantId || null,
+        selected_color: selectedColor || null,
+        selected_size: selectedSize || null,
+        variant_price: variantPrice,
       };
 
       if (user) {
@@ -200,7 +229,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const getTotalPrice = () => {
     return items.reduce((total, item) => {
-      return total + (item.product?.price || 0) * item.quantity;
+      const price = item.variant_price || item.product?.price || 0;
+      return total + price * item.quantity;
     }, 0);
   };
 

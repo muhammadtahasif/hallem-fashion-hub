@@ -10,6 +10,8 @@ interface CartItem {
   price: number;
   quantity: number;
   image_url?: string;
+  selected_color?: string;
+  selected_size?: string;
 }
 
 interface CartItemCardProps {
@@ -40,6 +42,13 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemove }: CartItemCardProps) =
             {/* Product Details */}
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium text-gray-900 truncate">{item.name}</h3>
+              {(item.selected_color || item.selected_size) && (
+                <div className="text-xs text-gray-600 mt-1">
+                  {item.selected_color && <span>Color: {item.selected_color}</span>}
+                  {item.selected_color && item.selected_size && <span className="mx-1">•</span>}
+                  {item.selected_size && <span>Size: {item.selected_size}</span>}
+                </div>
+              )}
               <p className="text-sm text-rose-600 font-semibold">PKR {item.price.toLocaleString()}</p>
               
               {/* Quantity Controls - Compact */}
@@ -105,6 +114,13 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemove }: CartItemCardProps) =
           {/* Product Details */}
           <div className="flex-1">
             <h3 className="text-lg font-medium text-gray-900">{item.name}</h3>
+            {(item.selected_color || item.selected_size) && (
+              <div className="text-sm text-gray-600 mt-1">
+                {item.selected_color && <span>Color: {item.selected_color}</span>}
+                {item.selected_color && item.selected_size && <span className="mx-2">•</span>}
+                {item.selected_size && <span>Size: {item.selected_size}</span>}
+              </div>
+            )}
             <p className="text-lg text-rose-600 font-semibold">PKR {item.price.toLocaleString()}</p>
           </div>
           

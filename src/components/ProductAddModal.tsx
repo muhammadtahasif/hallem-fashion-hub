@@ -20,6 +20,13 @@ interface Subcategory {
   category_id: string;
 }
 
+interface ProductVariant {
+  color: string;
+  size: string;
+  price: number;
+  stock: number;
+}
+
 interface ProductAddModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +40,9 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [images, setImages] = useState<string[]>(['']);
+  const [variants, setVariants] = useState<ProductVariant[]>([
+    { color: '', size: '', price: 0, stock: 0 }
+  ]);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -89,6 +99,7 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
       subcategory_id: "",
     });
     setImages(['']);
+    setVariants([{ color: '', size: '', price: 0, stock: 0 }]);
   };
 
   const generateSlug = (name: string) => {
@@ -121,6 +132,24 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
     newImages[index] = value;
     setImages(newImages);
   };
+
+  const addVariant = () => {
+    setVariants([...variants, { color: '', size: '', price: 0, stock: 0 }]);
+  };
+
+  const removeVariant = (index: number) => {
+    if (variants.length > 1) {
+      setVariants(variants.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateVariant = (index: number, field: keyof ProductVariant, value: string | number) => {
+    const newVariants = [...variants];
+    newVariants[index] = { ...newVariants[index], [field]: value };
+    setVariants(newVariants);
+  };
+
+  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
   const formatText = (format: string) => {
     const textarea = descriptionRef.current;
@@ -169,18 +198,31 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
     setIsLoading(true);
 
     try {
+      // Validate variants
+      const validVariants = variants.filter(v => v.color.trim() && v.size.trim());
+      if (validVariants.length === 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please add at least one variant with color and size.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const slug = generateSlug(formData.name);
       const sku = generateSKU(formData.name);
       const validImages = images.filter(img => img.trim() !== '');
       
-      const { error } = await supabase
+      // Create product first
+      const { data: productData, error: productError } = await supabase
         .from('products')
         .insert([{
           name: formData.name,
           description: formData.description,
-          price: formData.price,
+          price: Math.min(...validVariants.map(v => v.price)), // Base price is the minimum variant price
           original_price: formData.original_price || null,
-          stock: formData.stock,
+          stock: validVariants.reduce((sum, v) => sum + v.stock, 0), // Total stock
           image_url: validImages[0] || '',
           images: validImages.length > 1 ? validImages : null,
           featured: formData.featured,
@@ -188,13 +230,31 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
           subcategory_id: formData.subcategory_id || null,
           slug: slug,
           sku: sku,
-        }]);
+        }])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (productError) throw productError;
+
+      // Create variants
+      const variantInserts = validVariants.map((variant, index) => ({
+        product_id: productData.id,
+        color: variant.color,
+        size: variant.size,
+        price: variant.price,
+        stock: variant.stock,
+        sku: `${sku}-${variant.color.toUpperCase()}-${variant.size}`
+      }));
+
+      const { error: variantError } = await supabase
+        .from('product_variants')
+        .insert(variantInserts);
+
+      if (variantError) throw variantError;
 
       toast({
         title: "Product added",
-        description: "New product has been added successfully.",
+        description: "New product with variants has been added successfully.",
         variant: "default"
       });
 
@@ -382,6 +442,71 @@ const ProductAddModal = ({ isOpen, onClose, onAdd }: ProductAddModalProps) => {
                       size="sm"
                       variant="outline"
                       onClick={() => removeImageField(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Product Variants */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-sm font-medium">
+                Product Variants (Color, Size, Price, Stock)
+              </label>
+              <Button type="button" size="sm" variant="outline" onClick={addVariant}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Variant
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {variants.map((variant, index) => (
+                <div key={index} className="grid grid-cols-2 lg:grid-cols-5 gap-2 p-3 border rounded">
+                  <Input
+                    value={variant.color}
+                    onChange={(e) => updateVariant(index, 'color', e.target.value)}
+                    placeholder="Color"
+                  />
+                  <Select
+                    value={variant.size}
+                    onValueChange={(value) => updateVariant(index, 'size', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSizes.map((size) => (
+                        <SelectItem key={size} value={size}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    value={variant.price}
+                    onChange={(e) => updateVariant(index, 'price', parseFloat(e.target.value) || 0)}
+                    placeholder="Price (PKR)"
+                    min="0"
+                    step="0.01"
+                  />
+                  <Input
+                    type="number"
+                    value={variant.stock}
+                    onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
+                    placeholder="Stock"
+                    min="0"
+                  />
+                  {variants.length > 1 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => removeVariant(index)}
+                      className="lg:w-auto w-full col-span-2 lg:col-span-1"
                     >
                       <X className="h-4 w-4" />
                     </Button>
