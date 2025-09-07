@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ProductEditModal from "@/components/ProductEditModal";
 import ProductAddModal from "@/components/ProductAddModal";
+import ShippingCityManager from "@/components/ShippingCityManager";
 import CategoryManager from "@/components/CategoryManager";
 import SubcategoryManager from "@/components/SubcategoryManager";
 import ReportsSection from "@/components/ReportsSection";
@@ -414,7 +415,10 @@ const AdminDashboard = () => {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <ShippingCityManager />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Store Settings</CardTitle>
@@ -452,13 +456,13 @@ const AdminDashboard = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Truck className="h-5 w-5" />
-                    Shipping Settings
+                    Default Shipping Settings
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <label htmlFor="shippingCharges" className="block text-sm font-medium mb-2">
-                      Shipping Charges (PKR)
+                      Default Shipping Charges (PKR)
                     </label>
                     <Input
                       id="shippingCharges"
@@ -466,48 +470,23 @@ const AdminDashboard = () => {
                       min="0"
                       value={tempShippingCharges}
                       onChange={(e) => setTempShippingCharges(e.target.value)}
-                      placeholder="Enter shipping charges"
+                      placeholder="Enter default shipping charges"
                       className="w-full"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Enter 0 to make shipping free
+                      For cities not in the shipping list
                     </p>
                   </div>
                   <Button 
                     onClick={saveShippingCharges} 
                     className="w-full bg-rose-500 hover:bg-rose-600"
                   >
-                    Save Shipping Charges
+                    Save Default Shipping Charges
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-lg">Notification Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <span className="text-sm">Email notifications for new orders</span>
-                      <input type="checkbox" defaultChecked className="rounded" />
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <span className="text-sm">SMS notifications</span>
-                      <input type="checkbox" defaultChecked className="rounded" />
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <span className="text-sm">Low stock alerts</span>
-                      <input type="checkbox" defaultChecked className="rounded" />
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <span className="text-sm">Daily reports</span>
-                      <input type="checkbox" defaultChecked className="rounded" />
-                    </div>
-                  </div>
-                  <Button className="w-full bg-rose-500 hover:bg-rose-600">Save Preferences</Button>
-                </CardContent>
-              </Card>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

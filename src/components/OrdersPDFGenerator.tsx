@@ -19,6 +19,9 @@ interface Order {
     product_name: string;
     quantity: number;
     product_price: number;
+    variant_price?: number;
+    selected_color?: string;
+    selected_size?: string;
     products?: {
       sku: string;
     };
@@ -170,12 +173,20 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
         currentY += 30;
 
         // Order items table
-        const itemsData = order.order_items.map(item => [
-          item.product_name,
-          item.quantity.toString(),
-          `PKR ${item.product_price.toLocaleString()}`,
-          `PKR ${(item.quantity * item.product_price).toLocaleString()}`
-        ]);
+        const itemsData = order.order_items.map(item => {
+          const actualPrice = item.variant_price || item.product_price;
+          const variantInfo = [];
+          if (item.selected_color) variantInfo.push(`Color: ${item.selected_color}`);
+          if (item.selected_size) variantInfo.push(`Size: ${item.selected_size}`);
+          const productNameWithVariant = item.product_name + (variantInfo.length > 0 ? ` (${variantInfo.join(', ')})` : '');
+          
+          return [
+            productNameWithVariant,
+            item.quantity.toString(),
+            `PKR ${actualPrice.toLocaleString()}`,
+            `PKR ${(item.quantity * actualPrice).toLocaleString()}`
+          ];
+        });
 
         autoTable(doc, {
           head: [['Product', 'Qty', 'Price', 'Total']],

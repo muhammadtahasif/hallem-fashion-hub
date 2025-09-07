@@ -577,6 +577,36 @@ export type Database = {
         }
         Relationships: []
       }
+      shipping_cities: {
+        Row: {
+          city_name: string
+          created_at: string
+          delivery_available: boolean
+          id: string
+          province: string
+          shipping_cost: number
+          updated_at: string
+        }
+        Insert: {
+          city_name: string
+          created_at?: string
+          delivery_available?: boolean
+          id?: string
+          province: string
+          shipping_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          city_name?: string
+          created_at?: string
+          delivery_available?: boolean
+          id?: string
+          province?: string
+          shipping_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subcategories: {
         Row: {
           category_id: string

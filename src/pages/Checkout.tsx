@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useShipping } from "@/hooks/useShipping";
@@ -22,6 +23,14 @@ interface CustomerInfo {
   province: string;
   country: string;
   postalCode: string;
+}
+
+interface ShippingCity {
+  id: string;
+  city_name: string;
+  province: string;
+  shipping_cost: number;
+  delivery_available: boolean;
 }
 const Checkout = () => {
   const navigate = useNavigate();
@@ -51,6 +60,10 @@ const Checkout = () => {
   });
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [shippingCities, setShippingCities] = useState<ShippingCity[]>([]);
+  const [selectedShippingCity, setSelectedShippingCity] = useState<ShippingCity | null>(null);
+  const [cityShippingCost, setCityShippingCost] = useState(0);
+  const [deliveryNotAvailable, setDeliveryNotAvailable] = useState(false);
   useEffect(() => {
     if (user?.email) {
       setCustomerInfo(prev => ({
@@ -59,6 +72,36 @@ const Checkout = () => {
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+    fetchShippingCities();
+  }, []);
+
+  useEffect(() => {
+    // Update shipping cost when city changes
+    if (selectedShippingCity) {
+      setCityShippingCost(selectedShippingCity.shipping_cost);
+      setDeliveryNotAvailable(!selectedShippingCity.delivery_available);
+    } else {
+      setCityShippingCost(shippingCharges); // Default shipping charges
+      setDeliveryNotAvailable(false);
+    }
+  }, [selectedShippingCity, shippingCharges]);
+
+  const fetchShippingCities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shipping_cities')
+        .select('*')
+        .eq('delivery_available', true)
+        .order('city_name');
+
+      if (error) throw error;
+      setShippingCities(data || []);
+    } catch (error) {
+      console.error('Error fetching shipping cities:', error);
+    }
+  };
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const {
       name,
@@ -67,6 +110,15 @@ const Checkout = () => {
     setCustomerInfo(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleCityChange = (cityName: string) => {
+    const city = shippingCities.find(c => c.city_name === cityName);
+    setSelectedShippingCity(city || null);
+    setCustomerInfo(prev => ({
+      ...prev,
+      city: cityName
     }));
   };
   const updateProductStock = async (productId: string, quantity: number) => {
@@ -105,6 +157,16 @@ const Checkout = () => {
       });
       return;
     }
+
+    // Check if delivery is available in selected city
+    if (deliveryNotAvailable) {
+      toast({
+        title: "Delivery Not Available",
+        description: "Delivery is not possible in your city right now!",
+        variant: "destructive"
+      });
+      return;
+    }
     if (paymentMethod === 'online') {
       toast({
         title: "Payment Not Available",
@@ -116,7 +178,7 @@ const Checkout = () => {
     setIsProcessing(true);
     try {
       const orderNumber = `ORD-${Date.now()}`;
-      const totalWithShipping = total + shippingCharges;
+      const totalWithShipping = total + cityShippingCost;
 
       // Create order
       const {
@@ -139,15 +201,23 @@ const Checkout = () => {
       // Create order items and update stock
       for (const item of items) {
         // Create order item
-        const {
-          error: itemsError
-        } = await supabase.from('order_items').insert({
+        const orderItemData: any = {
           order_id: order.id,
           product_id: item.product.id,
           product_name: item.product.name,
           quantity: item.quantity,
           product_price: item.product.price
-        });
+        };
+
+        // Add variant information if available
+        if (item.variant_id) {
+          orderItemData.variant_id = item.variant_id;
+          orderItemData.variant_price = item.variant_price;
+          orderItemData.selected_color = item.selected_color;
+          orderItemData.selected_size = item.selected_size;
+        }
+
+        const { error: itemsError } = await supabase.from('order_items').insert(orderItemData);
         if (itemsError) throw itemsError;
 
         // Update product stock
@@ -210,7 +280,23 @@ const Checkout = () => {
                 </div>
                 <div>
                   <Label htmlFor="city" className="text-sm">City</Label>
-                  <Input type="text" id="city" name="city" value={customerInfo.city} onChange={handleInputChange} placeholder="Enter your city" required className="mt-1" />
+                  <Select value={customerInfo.city} onValueChange={handleCityChange}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select your city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shippingCities.map((city) => (
+                        <SelectItem key={city.id} value={city.city_name}>
+                          {city.city_name} - PKR {city.shipping_cost.toLocaleString()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {customerInfo.city && !selectedShippingCity && (
+                    <p className="text-xs text-red-600 mt-1">
+                      This city is not in our delivery list. Please contact us for custom delivery.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="province" className="text-sm">Province</Label>
@@ -247,11 +333,11 @@ const Checkout = () => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Shipping</span>
-                    <span>PKR {shippingCharges.toLocaleString()}</span>
+                    <span>PKR {cityShippingCost.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between font-bold text-base border-t pt-2">
                     <span>Total</span>
-                    <span>PKR {(total + shippingCharges).toLocaleString()}</span>
+                    <span>PKR {(total + cityShippingCost).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -287,11 +373,23 @@ const Checkout = () => {
                 </Alert>}
             </div>
 
-            <Button disabled={isProcessing} className="w-full bg-rose-500 hover:bg-rose-600 py-3 text-base">
+            {deliveryNotAvailable && (
+              <Alert className="bg-red-50 border-red-200">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  Delivery is not possible in your city right now!
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Button 
+              disabled={isProcessing || deliveryNotAvailable} 
+              className="w-full bg-rose-500 hover:bg-rose-600 py-3 text-base disabled:bg-gray-400"
+            >
               {isProcessing ? <div className="flex items-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   Processing...
-                </div> : `Place Order - PKR ${(total + shippingCharges).toLocaleString()}`}
+                </div> : `Place Order - PKR ${(total + cityShippingCost).toLocaleString()}`}
             </Button>
           </form>
         </CardContent>

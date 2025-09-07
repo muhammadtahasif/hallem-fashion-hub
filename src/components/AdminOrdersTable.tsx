@@ -27,6 +27,9 @@ interface Order {
     product_name: string;
     quantity: number;
     product_price: number;
+    variant_price?: number;
+    selected_color?: string;
+    selected_size?: string;
     products?: {
       sku: string;
     };
@@ -81,6 +84,9 @@ const AdminOrdersTable = () => {
             product_name,
             quantity,
             product_price,
+            variant_price,
+            selected_color,
+            selected_size,
             products (
               sku
             )
@@ -455,7 +461,7 @@ const AdminOrdersTable = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Items</TableHead>
+                  <TableHead>Items & Variants</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -514,12 +520,26 @@ const AdminOrdersTable = () => {
                     <TableCell>PKR {order.total_amount.toLocaleString()}</TableCell>
                     <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {order.order_items.map((item, index) => (
-                          <div key={index}>
-                            {item.product_name} (x{item.quantity})
-                          </div>
-                        ))}
+                      <div className="text-sm space-y-1">
+                        {order.order_items.map((item, index) => {
+                          const actualPrice = item.variant_price || item.product_price;
+                          return (
+                            <div key={index}>
+                              <div className="font-medium">{item.product_name} (x{item.quantity})</div>
+                              {item.selected_color && (
+                                <span className="text-xs bg-gray-100 px-1 rounded mr-1">
+                                  {item.selected_color}
+                                </span>
+                              )}
+                              {item.selected_size && (
+                                <span className="text-xs bg-gray-100 px-1 rounded">
+                                  {item.selected_size}
+                                </span>
+                              )}
+                              <div className="text-xs text-gray-600">PKR {actualPrice.toLocaleString()}</div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </TableCell>
                     <TableCell>
