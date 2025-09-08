@@ -519,29 +519,38 @@ const AdminOrdersTable = () => {
                     </TableCell>
                     <TableCell>PKR {order.total_amount.toLocaleString()}</TableCell>
                     <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="text-sm space-y-1">
-                        {order.order_items.map((item, index) => {
-                          const actualPrice = item.variant_price || item.product_price;
-                          return (
-                            <div key={index}>
-                              <div className="font-medium">{item.product_name} (x{item.quantity})</div>
-                              {item.selected_color && (
-                                <span className="text-xs bg-gray-100 px-1 rounded mr-1">
-                                  {item.selected_color}
-                                </span>
-                              )}
-                              {item.selected_size && (
-                                <span className="text-xs bg-gray-100 px-1 rounded">
-                                  {item.selected_size}
-                                </span>
-                              )}
-                              <div className="text-xs text-gray-600">PKR {actualPrice.toLocaleString()}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </TableCell>
+                     <TableCell>
+                       <div className="text-sm space-y-2">
+                         {order.order_items.map((item, index) => {
+                           const actualPrice = item.variant_price || item.product_price;
+                           const variantDetails = [];
+                           if (item.selected_color) variantDetails.push(`Color: ${item.selected_color}`);
+                           if (item.selected_size) variantDetails.push(`Size: ${item.selected_size}`);
+                           
+                           return (
+                             <div key={index} className="border-l-2 border-gray-200 pl-2">
+                               <div className="font-medium text-gray-800">{item.product_name}</div>
+                               <div className="text-xs text-gray-600">Quantity: {item.quantity}</div>
+                               {variantDetails.length > 0 && (
+                                 <div className="flex flex-wrap gap-1 mt-1">
+                                   {variantDetails.map((detail, idx) => (
+                                     <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                       {detail}
+                                     </span>
+                                   ))}
+                                 </div>
+                               )}
+                               <div className="text-sm font-semibold text-green-600 mt-1">
+                                 PKR {actualPrice.toLocaleString()} each
+                               </div>
+                               <div className="text-xs text-gray-500">
+                                 Subtotal: PKR {(item.quantity * actualPrice).toLocaleString()}
+                               </div>
+                             </div>
+                           );
+                         })}
+                       </div>
+                     </TableCell>
                     <TableCell>
                       <Button
                         variant="destructive"

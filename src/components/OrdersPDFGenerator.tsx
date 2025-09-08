@@ -178,10 +178,15 @@ const OrdersPDFGenerator = ({ orders, title = "Orders Report" }: OrdersPDFGenera
           const variantInfo = [];
           if (item.selected_color) variantInfo.push(`Color: ${item.selected_color}`);
           if (item.selected_size) variantInfo.push(`Size: ${item.selected_size}`);
-          const productNameWithVariant = item.product_name + (variantInfo.length > 0 ? ` (${variantInfo.join(', ')})` : '');
+          
+          // Create detailed product description with clear variant info
+          let productDescription = item.product_name;
+          if (variantInfo.length > 0) {
+            productDescription += `\n• ${variantInfo.join('\n• ')}`;
+          }
           
           return [
-            productNameWithVariant,
+            productDescription,
             item.quantity.toString(),
             `PKR ${actualPrice.toLocaleString()}`,
             `PKR ${(item.quantity * actualPrice).toLocaleString()}`
