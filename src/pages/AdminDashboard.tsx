@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ProductEditModal from "@/components/ProductEditModal";
 import ProductAddModal from "@/components/ProductAddModal";
+import ProductVisibilityToggle from "@/components/ProductVisibilityToggle";
 import ShippingCityManager from "@/components/ShippingCityManager";
 import CategoryManager from "@/components/CategoryManager";
 import SubcategoryManager from "@/components/SubcategoryManager";
@@ -34,6 +35,7 @@ interface Product {
   stock: number;
   image_url: string;
   featured: boolean;
+  is_visible: boolean;
   sku: string;
   categories?: {
     name: string;
@@ -93,7 +95,7 @@ const AdminDashboard = () => {
 
   const fetchProducts = async () => {
     try {
-      const { data: productsData, error: productsError } = await supabase
+        const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select(`
           id,
@@ -104,6 +106,7 @@ const AdminDashboard = () => {
           stock,
           image_url,
           featured,
+          is_visible,
           sku,
           categories (
             name
@@ -363,6 +366,17 @@ const AdminDashboard = () => {
                           <Badge variant={product.stock > 5 ? "default" : "destructive"} className="text-xs">
                             {product.stock > 5 ? "In Stock" : "Low Stock"}
                           </Badge>
+                          <div className="mt-2">
+                            <ProductVisibilityToggle
+                              productId={product.id}
+                              isVisible={product.is_visible}
+                              onVisibilityChange={(visible) => {
+                                setProducts(products.map(p => 
+                                  p.id === product.id ? { ...p, is_visible: visible } : p
+                                ));
+                              }}
+                            />
+                          </div>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button 

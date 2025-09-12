@@ -97,6 +97,7 @@ const Shop = () => {
       let query = supabase
         .from('products')
         .select('*')
+        .eq('is_visible', true)
         .gt('stock', 0);
 
       if (selectedCategoryId) {

@@ -43,6 +43,7 @@ const RandomProducts = () => {
           )
         `)
         .eq('featured', true)
+        .eq('is_visible', true)
         .gt('stock', 0)
         .limit(8);
 

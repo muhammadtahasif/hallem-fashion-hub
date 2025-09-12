@@ -37,6 +37,7 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
         .from('products')
         .select('id, name, price, original_price, image_url, slug')
         .neq('id', currentProductId)
+        .eq('is_visible', true)
         .gt('stock', 0)
         .limit(8);
 
@@ -58,6 +59,7 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
           .from('products')
           .select('id, name, price, original_price, image_url, slug')
           .neq('id', currentProductId)
+          .eq('is_visible', true)
           .gt('stock', 0)
           .limit(8 - products.length);
 

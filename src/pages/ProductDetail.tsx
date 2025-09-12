@@ -74,6 +74,7 @@ const ProductDetail = () => {
           )
         `)
         .eq('id', id)
+        .eq('is_visible', true)
         .single();
 
       if (error) throw error;

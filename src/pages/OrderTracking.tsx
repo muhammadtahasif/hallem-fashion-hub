@@ -24,6 +24,13 @@ interface Order {
     product_name: string;
     quantity: number;
     product_price: number;
+    variant_price?: number;
+    selected_color?: string;
+    selected_size?: string;
+    products?: {
+      sku: string;
+      image_url: string;
+    };
   }>;
 }
 
@@ -56,9 +63,11 @@ const OrderTracking = () => {
         .select(`
           *,
           order_items (
-            product_name,
-            quantity,
-            product_price
+            *,
+            products (
+              sku,
+              image_url
+            )
           )
         `)
         .eq('order_number', orderNumber.trim())
@@ -310,18 +319,52 @@ const OrderTracking = () => {
                 {/* Order Items */}
                 <div>
                   <h3 className="font-semibold mb-3">Order Items</h3>
-                  <div className="space-y-2">
-                    {order.order_items.map((item, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <span className="font-medium">{item.product_name}</span>
-                          <span className="text-gray-600 ml-2">× {item.quantity}</span>
+                  <div className="space-y-4">
+                    {order.order_items.map((item, index) => {
+                      const actualPrice = item.variant_price || item.product_price;
+                      return (
+                        <div key={index} className="border rounded-lg p-4 flex items-start gap-4">
+                          <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0">
+                            {item.products?.image_url && (
+                              <img 
+                                src={item.products.image_url} 
+                                alt={item.product_name}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium">{item.product_name}</h4>
+                            {(item.selected_color || item.selected_size) && (
+                              <div className="flex gap-2 mt-1">
+                                {item.selected_color && (
+                                  <span className="text-xs bg-rose-100 text-rose-800 px-2 py-1 rounded">
+                                    Color: {item.selected_color}
+                                  </span>
+                                )}
+                                {item.selected_size && (
+                                  <span className="text-xs bg-rose-100 text-rose-800 px-2 py-1 rounded">
+                                    Size: {item.selected_size}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {item.products?.sku && (
+                              <p className="text-xs text-gray-500 mt-1">SKU: {item.products.sku}</p>
+                            )}
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-sm text-gray-600">Quantity: {item.quantity}</span>
+                              <div className="text-right">
+                                <div className="font-medium">PKR {actualPrice.toLocaleString()} each</div>
+                                <div className="text-sm text-gray-600">
+                                  Total: PKR {(item.quantity * actualPrice).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <span className="font-medium">
-                          PKR {(item.product_price * item.quantity).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </CardContent>

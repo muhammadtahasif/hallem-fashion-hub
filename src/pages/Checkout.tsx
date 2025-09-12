@@ -304,7 +304,8 @@ const Checkout = () => {
                 </div>
                 <div>
                   <Label htmlFor="country" className="text-sm">Country</Label>
-                  <Input type="text" id="country" name="country" value={customerInfo.country} onChange={handleInputChange} placeholder="Enter your country" required className="mt-1" />
+                  <Input type="text" id="country" name="country" value="Pakistan" disabled className="mt-1 bg-gray-100 text-gray-600" />
+                  <p className="text-xs text-gray-500 mt-1">We currently deliver only within Pakistan</p>
                 </div>
                 <div>
                   <Label htmlFor="postalCode" className="text-sm">Postal Code</Label>
@@ -321,10 +322,25 @@ const Checkout = () => {
               </h3>
               <div className="border rounded-md p-4 space-y-3">
                 <div className="max-h-40 overflow-y-auto space-y-2">
-                  {items.map(item => <div key={item.product.id} className="flex justify-between items-center text-sm">
-                      <span className="flex-1 pr-2">{item.product.name} x {item.quantity}</span>
-                      <span className="font-medium">PKR {(item.product.price * item.quantity).toLocaleString()}</span>
-                    </div>)}
+                  {items.map(item => {
+                    const actualPrice = item.variant_price || item.product.price;
+                    return (
+                      <div key={`${item.product.id}-${item.variant_id || 'no-variant'}`} className="flex justify-between items-center text-sm border-l-2 border-rose-200 pl-2 py-1">
+                        <div className="flex-1 pr-2">
+                          <div className="font-medium">{item.product.name}</div>
+                          {(item.selected_color || item.selected_size) && (
+                            <div className="text-xs text-gray-600">
+                              {item.selected_color && `Color: ${item.selected_color}`}
+                              {item.selected_color && item.selected_size && ' • '}
+                              {item.selected_size && `Size: ${item.selected_size}`}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500">Qty: {item.quantity}</div>
+                        </div>
+                        <span className="font-medium">PKR {(actualPrice * item.quantity).toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="border-t pt-3 space-y-2">
                   <div className="flex justify-between text-sm">

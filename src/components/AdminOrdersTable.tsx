@@ -522,30 +522,38 @@ const AdminOrdersTable = () => {
                      <TableCell>
                        <div className="text-sm space-y-2">
                          {order.order_items.map((item, index) => {
+                           // Use variant price if available, otherwise use product price
                            const actualPrice = item.variant_price || item.product_price;
                            const variantDetails = [];
                            if (item.selected_color) variantDetails.push(`Color: ${item.selected_color}`);
                            if (item.selected_size) variantDetails.push(`Size: ${item.selected_size}`);
                            
                            return (
-                             <div key={index} className="border-l-2 border-gray-200 pl-2">
-                               <div className="font-medium text-gray-800">{item.product_name}</div>
-                               <div className="text-xs text-gray-600">Quantity: {item.quantity}</div>
+                             <div key={index} className="border-l-2 border-rose-200 pl-3 py-2 bg-gray-50 rounded">
+                               <div className="font-semibold text-gray-900">{item.product_name}</div>
+                               <div className="text-xs text-gray-600 mt-1">
+                                 Quantity: <span className="font-medium">{item.quantity}</span>
+                               </div>
                                {variantDetails.length > 0 && (
-                                 <div className="flex flex-wrap gap-1 mt-1">
+                                 <div className="flex flex-wrap gap-1 mt-2">
                                    {variantDetails.map((detail, idx) => (
-                                     <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                     <span key={idx} className="text-xs bg-rose-100 text-rose-800 px-2 py-1 rounded font-medium">
                                        {detail}
                                      </span>
                                    ))}
                                  </div>
                                )}
-                               <div className="text-sm font-semibold text-green-600 mt-1">
+                               <div className="text-sm font-bold text-green-700 mt-2">
                                  PKR {actualPrice.toLocaleString()} each
                                </div>
-                               <div className="text-xs text-gray-500">
-                                 Subtotal: PKR {(item.quantity * actualPrice).toLocaleString()}
+                               <div className="text-xs text-gray-600 font-medium">
+                                 Total: PKR {(item.quantity * actualPrice).toLocaleString()}
                                </div>
+                               {item.products?.sku && (
+                                 <div className="text-xs text-gray-500 mt-1">
+                                   SKU: {item.products.sku}
+                                 </div>
+                               )}
                              </div>
                            );
                          })}
