@@ -52,6 +52,7 @@ const Index = () => {
         .from('products')
         .select('*')
         .eq('featured', true)
+        .eq('is_visible', true)
         .limit(4);
 
       if (productsError) throw productsError;
