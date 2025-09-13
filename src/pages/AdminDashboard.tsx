@@ -136,21 +136,41 @@ const AdminDashboard = () => {
         .select('id')
         .eq('product_id', productToDelete.id);
 
-      // Delete all order items with this product and its variants
-      const { error: orderItemsError } = await supabase
+      // Delete all order items with this product
+      const { error: orderItemsProductError } = await supabase
         .from('order_items')
         .delete()
-        .or(`product_id.eq.${productToDelete.id},variant_id.in.(${variants?.map(v => v.id).join(',') || 'null'})`);
+        .eq('product_id', productToDelete.id);
 
-      if (orderItemsError) throw orderItemsError;
+      if (orderItemsProductError) throw orderItemsProductError;
 
-      // Delete all cart items with this product and its variants
-      const { error: cartItemsError } = await supabase
+      // Delete order items with variants if any exist
+      if (variants && variants.length > 0) {
+        const { error: orderItemsVariantError } = await supabase
+          .from('order_items')
+          .delete()
+          .in('variant_id', variants.map(v => v.id));
+
+        if (orderItemsVariantError) throw orderItemsVariantError;
+      }
+
+      // Delete all cart items with this product
+      const { error: cartItemsProductError } = await supabase
         .from('cart_items')
         .delete()
-        .or(`product_id.eq.${productToDelete.id},variant_id.in.(${variants?.map(v => v.id).join(',') || 'null'})`);
+        .eq('product_id', productToDelete.id);
 
-      if (cartItemsError) throw cartItemsError;
+      if (cartItemsProductError) throw cartItemsProductError;
+
+      // Delete cart items with variants if any exist
+      if (variants && variants.length > 0) {
+        const { error: cartItemsVariantError } = await supabase
+          .from('cart_items')
+          .delete()
+          .in('variant_id', variants.map(v => v.id));
+
+        if (cartItemsVariantError) throw cartItemsVariantError;
+      }
 
       // Delete all product variants
       const { error: variantsError } = await supabase
