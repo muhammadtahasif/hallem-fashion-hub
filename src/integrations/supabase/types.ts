@@ -381,6 +381,7 @@ export type Database = {
           price: number
           sku: string
           slug: string
+          sold_out: boolean
           stock: number
           subcategory_id: string | null
           updated_at: string
@@ -400,6 +401,7 @@ export type Database = {
           price: number
           sku: string
           slug: string
+          sold_out?: boolean
           stock?: number
           subcategory_id?: string | null
           updated_at?: string
@@ -419,6 +421,7 @@ export type Database = {
           price?: number
           sku?: string
           slug?: string
+          sold_out?: boolean
           stock?: number
           subcategory_id?: string | null
           updated_at?: string

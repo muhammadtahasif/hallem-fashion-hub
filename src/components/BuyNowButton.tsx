@@ -11,9 +11,10 @@ interface BuyNowButtonProps {
   variantId?: string;
   selectedColor?: string;
   selectedSize?: string;
+  isSoldOut?: boolean;
 }
 
-const BuyNowButton = ({ productId, className, quantity = 1, variantId, selectedColor, selectedSize }: BuyNowButtonProps) => {
+const BuyNowButton = ({ productId, className, quantity = 1, variantId, selectedColor, selectedSize, isSoldOut = false }: BuyNowButtonProps) => {
   const { items, addToCart } = useCart();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -43,9 +44,14 @@ const BuyNowButton = ({ productId, className, quantity = 1, variantId, selectedC
   return (
     <Button 
       onClick={handleBuyNow}
-      className={className || "w-full bg-rose-500 hover:bg-rose-600 text-white"}
+      disabled={isSoldOut}
+      className={
+        isSoldOut 
+          ? "w-full bg-gray-400 hover:bg-gray-400 cursor-not-allowed opacity-50 text-white"
+          : className || "w-full bg-rose-500 hover:bg-rose-600 text-white"
+      }
     >
-      Buy Now
+      {isSoldOut ? 'Sold Out' : 'Buy Now'}
     </Button>
   );
 };

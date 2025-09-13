@@ -14,6 +14,7 @@ interface Product {
   original_price?: number;
   image_url: string;
   featured: boolean;
+  sold_out: boolean;
 }
 
 interface Category {
@@ -180,18 +181,25 @@ const Index = () => {
                 <div key={product.id} className="group">
                   <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
                     <Link to={`/product/${product.id}`}>
-                      <div className="relative">
-                        <img 
-                          src={product.image_url} 
-                          alt={product.name} 
-                          className="w-full h-32 sm:h-40 lg:h-64 object-cover group-hover:scale-105 transition-transform duration-300" 
-                        />
-                        {discount > 0 && (
-                          <Badge className="absolute top-1 left-1 lg:top-2 lg:left-2 bg-rose-500 text-xs">
-                            -{discount}%
-                          </Badge>
-                        )}
-                      </div>
+                       <div className="relative">
+                         <img 
+                           src={product.image_url} 
+                           alt={product.name} 
+                           className="w-full h-32 sm:h-40 lg:h-64 object-cover group-hover:scale-105 transition-transform duration-300" 
+                         />
+                         {discount > 0 && (
+                           <Badge className="absolute top-1 left-1 lg:top-2 lg:left-2 bg-rose-500 text-xs">
+                             -{discount}%
+                           </Badge>
+                         )}
+                         {product.sold_out && (
+                           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                             <span className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                               SOLD OUT
+                             </span>
+                           </div>
+                         )}
+                       </div>
                     </Link>
                     <CardContent className="p-2 sm:p-3 lg:p-4">
                       <Link to={`/product/${product.id}`}>

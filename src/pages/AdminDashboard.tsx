@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ProductEditModal from "@/components/ProductEditModal";
 import ProductAddModal from "@/components/ProductAddModal";
 import ProductVisibilityToggle from "@/components/ProductVisibilityToggle";
+import ProductSoldOutToggle from "@/components/ProductSoldOutToggle";
 import ShippingCityManager from "@/components/ShippingCityManager";
 import CategoryManager from "@/components/CategoryManager";
 import SubcategoryManager from "@/components/SubcategoryManager";
@@ -36,6 +37,7 @@ interface Product {
   image_url: string;
   featured: boolean;
   is_visible: boolean;
+  sold_out: boolean;
   sku: string;
   categories?: {
     name: string;
@@ -107,6 +109,7 @@ const AdminDashboard = () => {
           image_url,
           featured,
           is_visible,
+          sold_out,
           sku,
           categories (
             name
@@ -408,13 +411,22 @@ const AdminDashboard = () => {
                           <Badge variant={product.stock > 5 ? "default" : "destructive"} className="text-xs">
                             {product.stock > 5 ? "In Stock" : "Low Stock"}
                           </Badge>
-                          <div className="mt-2">
+                          <div className="mt-2 space-y-2">
                             <ProductVisibilityToggle
                               productId={product.id}
                               isVisible={product.is_visible}
                               onVisibilityChange={(visible) => {
                                 setProducts(products.map(p => 
                                   p.id === product.id ? { ...p, is_visible: visible } : p
+                                ));
+                              }}
+                            />
+                            <ProductSoldOutToggle
+                              productId={product.id}
+                              isSoldOut={product.sold_out}
+                              onSoldOutChange={(soldOut) => {
+                                setProducts(products.map(p => 
+                                  p.id === product.id ? { ...p, sold_out: soldOut } : p
                                 ));
                               }}
                             />

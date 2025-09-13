@@ -34,6 +34,7 @@ interface Product {
   images?: string[];
   featured: boolean;
   sku: string;
+  sold_out: boolean;
   categories?: {
     id: string;
     name: string;
@@ -381,7 +382,7 @@ const ProductDetail = () => {
             )}
 
             {/* Quantity and Add to Cart */}
-            {getCurrentStock() > 0 && (
+            {getCurrentStock() > 0 && !product.sold_out && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Quantity</label>
@@ -428,14 +429,17 @@ const ProductDetail = () => {
                     variantId={selectedVariant?.id}
                     selectedColor={selectedColor}
                     selectedSize={selectedSize}
+                    isSoldOut={product.sold_out}
                   />
                 </div>
               </div>
             )}
 
-            {getCurrentStock() === 0 && (
+            {(getCurrentStock() === 0 || product.sold_out) && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-800 font-medium">This product is currently out of stock.</p>
+                <p className="text-red-800 font-medium">
+                  {product.sold_out ? 'This product is sold out.' : 'This product is currently out of stock.'}
+                </p>
               </div>
             )}
           </div>

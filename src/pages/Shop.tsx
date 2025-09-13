@@ -22,6 +22,7 @@ interface Product {
   subcategory_id?: string;
   featured: boolean;
   stock: number;
+  sold_out: boolean;
   categories?: {
     id: string;
     name: string;
@@ -263,15 +264,22 @@ const Shop = () => {
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="group hover:shadow-lg transition-shadow">
                   <CardContent className="p-0">
-                    <Link to={`/product/${product.id}`}>
-                      <div className="aspect-square overflow-hidden rounded-t-lg">
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    </Link>
+                     <Link to={`/product/${product.id}`}>
+                       <div className="aspect-square overflow-hidden rounded-t-lg relative">
+                         <img
+                           src={product.image_url}
+                           alt={product.name}
+                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                         />
+                         {product.sold_out && (
+                           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                             <span className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                               SOLD OUT
+                             </span>
+                           </div>
+                         )}
+                       </div>
+                     </Link>
                     <div className="p-2 md:p-4">
                       <div className="flex items-start justify-between mb-1 md:mb-2 gap-1">
                         <Link to={`/product/${product.id}`}>
@@ -297,14 +305,19 @@ const Shop = () => {
                             </span>
                           )}
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddToCart(product)}
-                          className="bg-rose-500 hover:bg-rose-600 text-xs px-2 py-1 w-full"
-                        >
-                          <ShoppingCart className="w-3 h-3 mr-1" />
-                          Add
-                        </Button>
+                         <Button
+                           size="sm"
+                           onClick={() => handleAddToCart(product)}
+                           disabled={product.sold_out}
+                           className={`text-xs px-2 py-1 w-full ${
+                             product.sold_out 
+                               ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed opacity-50" 
+                               : "bg-rose-500 hover:bg-rose-600"
+                           }`}
+                         >
+                           <ShoppingCart className="w-3 h-3 mr-1" />
+                           {product.sold_out ? 'Sold Out' : 'Add'}
+                         </Button>
                       </div>
                     </div>
                   </CardContent>
