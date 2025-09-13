@@ -130,15 +130,37 @@ const AdminDashboard = () => {
     if (!productToDelete) return;
 
     try {
-      // Delete all order items with this product first
+      // First, get all product variants for this product
+      const { data: variants } = await supabase
+        .from('product_variants')
+        .select('id')
+        .eq('product_id', productToDelete.id);
+
+      // Delete all order items with this product and its variants
       const { error: orderItemsError } = await supabase
         .from('order_items')
         .delete()
-        .eq('product_id', productToDelete.id);
+        .or(`product_id.eq.${productToDelete.id},variant_id.in.(${variants?.map(v => v.id).join(',') || 'null'})`);
 
       if (orderItemsError) throw orderItemsError;
 
-      // Delete the product
+      // Delete all cart items with this product and its variants
+      const { error: cartItemsError } = await supabase
+        .from('cart_items')
+        .delete()
+        .or(`product_id.eq.${productToDelete.id},variant_id.in.(${variants?.map(v => v.id).join(',') || 'null'})`);
+
+      if (cartItemsError) throw cartItemsError;
+
+      // Delete all product variants
+      const { error: variantsError } = await supabase
+        .from('product_variants')
+        .delete()
+        .eq('product_id', productToDelete.id);
+
+      if (variantsError) throw variantsError;
+
+      // Finally, delete the product
       const { error: productError } = await supabase
         .from('products')
         .delete()
