@@ -82,18 +82,23 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
         subcategory_id: product.subcategory_id || "",
       });
       
-      // Show all existing images
+      // Show all existing images including the main image_url and additional images
       const allImages = [];
-      if (product.image_url) {
-        allImages.push(product.image_url);
-      }
+      
+      // Add all images from the images array first
       if (product.images && product.images.length > 0) {
         product.images.forEach(img => {
-          if (img && img !== product.image_url) {
+          if (img && img.trim() !== "") {
             allImages.push(img);
           }
         });
       }
+      
+      // If image_url exists and is not already in the images array, add it
+      if (product.image_url && product.image_url.trim() !== "" && !allImages.includes(product.image_url)) {
+        allImages.unshift(product.image_url); // Add at the beginning
+      }
+      
       // Always show at least one input field
       setProductImages(allImages.length > 0 ? allImages : [""]);
     } else {
@@ -117,6 +122,14 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
     if (formData.category_id) {
       const filtered = subcategories.filter(sub => sub.category_id === formData.category_id);
       setFilteredSubcategories(filtered);
+      
+      // Reset subcategory if it doesn't belong to the new category
+      if (formData.subcategory_id && !filtered.some(sub => sub.id === formData.subcategory_id)) {
+        setFormData(prev => ({ ...prev, subcategory_id: "" }));
+      }
+    } else {
+      setFilteredSubcategories([]);
+      setFormData(prev => ({ ...prev, subcategory_id: "" }));
     }
   }, [formData.category_id, subcategories]);
 
