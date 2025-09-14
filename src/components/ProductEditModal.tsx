@@ -82,7 +82,7 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
         subcategory_id: product.subcategory_id || "",
       });
       
-      // Show all existing images including the main image
+      // Show all existing images
       const allImages = [];
       if (product.image_url) {
         allImages.push(product.image_url);
@@ -94,7 +94,22 @@ const ProductEditModal = ({ product, isOpen, onClose, onUpdate }: ProductEditMod
           }
         });
       }
+      // Always show at least one input field
       setProductImages(allImages.length > 0 ? allImages : [""]);
+    } else {
+      // Reset form when product is null
+      setFormData({
+        name: "",
+        description: "",
+        price: 0,
+        original_price: 0,
+        stock: 0,
+        image_url: "",
+        featured: false,
+        category_id: "",
+        subcategory_id: "",
+      });
+      setProductImages([""]);
     }
   }, [product]);
 

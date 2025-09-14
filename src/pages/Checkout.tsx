@@ -280,21 +280,38 @@ const Checkout = () => {
                 </div>
                 <div>
                   <Label htmlFor="city" className="text-sm">City</Label>
-                  <Select value={customerInfo.city} onValueChange={handleCityChange}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select your city" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {shippingCities.map((city) => (
-                        <SelectItem key={city.id} value={city.city_name}>
-                          {city.city_name} - PKR {city.shipping_cost.toLocaleString()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2 mt-1">
+                    <Select value={customerInfo.city} onValueChange={handleCityChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shippingCities.map((city) => (
+                          <SelectItem key={city.id} value={city.city_name}>
+                            {city.city_name} - PKR {city.shipping_cost.toLocaleString()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-gray-500 text-center">OR</div>
+                    <Input
+                      type="text"
+                      placeholder="Enter your city manually"
+                      value={customerInfo.city}
+                      onChange={(e) => {
+                        const cityName = e.target.value;
+                        const city = shippingCities.find(c => c.city_name.toLowerCase() === cityName.toLowerCase());
+                        setSelectedShippingCity(city || null);
+                        setCustomerInfo(prev => ({
+                          ...prev,
+                          city: cityName
+                        }));
+                      }}
+                    />
+                  </div>
                   {customerInfo.city && !selectedShippingCity && (
-                    <p className="text-xs text-red-600 mt-1">
-                      This city is not in our delivery list. Please contact us for custom delivery.
+                    <p className="text-xs text-amber-600 mt-1">
+                      Default shipping charges (PKR {shippingCharges.toLocaleString()}) will apply as this city is not in our delivery list.
                     </p>
                   )}
                 </div>

@@ -91,7 +91,7 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
     return (
       <div className="mt-16">
         <h2 className="text-2xl font-bold font-serif mb-8">Related Products</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="bg-gray-200 aspect-square rounded-lg mb-4"></div>
@@ -116,7 +116,7 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
   return (
     <div className="mt-16">
       <h2 className="text-2xl font-bold font-serif mb-8">Related Products</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         {relatedProducts.map((product) => (
           <Card 
             key={product.id} 
@@ -137,20 +137,21 @@ const RelatedProducts = ({ currentProductId, categoryId }: RelatedProductsProps)
                   </div>
                 )}
               </div>
-              <div className="p-4">
-                <h3 className="font-medium mb-2 line-clamp-2">{product.name}</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg font-bold text-rose-500">
+              <div className="p-2 sm:p-3 md:p-4">
+                <h3 className="font-medium mb-1 sm:mb-2 line-clamp-2 text-sm sm:text-base">{product.name}</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-2">
+                  <span className="text-sm sm:text-lg font-bold text-rose-500">
                     PKR {product.price.toLocaleString()}
                   </span>
                   {product.original_price && product.original_price > product.price && (
-                    <span className="text-sm text-gray-500 line-through">
+                    <span className="text-xs sm:text-sm text-gray-500 line-through">
                       PKR {product.original_price.toLocaleString()}
                     </span>
                   )}
                 </div>
                 <Button 
-                  className="w-full mt-3 bg-rose-500 hover:bg-rose-600"
+                  size="sm"
+                  className="w-full text-xs sm:text-sm bg-rose-500 hover:bg-rose-600"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleProductClick(product);
